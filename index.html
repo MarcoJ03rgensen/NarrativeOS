@@ -97,16 +97,19 @@
         };
 
         // --- GOOGLE DRIVE CONFIGURATION ---
-        // IMPORTANT FOR GITHUB PAGES DEPLOYMENT:
-        // 1. Go to Google Cloud Console > APIs & Services > Credentials
-        // 2. Edit your OAuth 2.0 Client ID
-        // 3. Under "Authorized JavaScript origins", ADD your GitHub Pages URL (e.g., https://yourusername.github.io)
-        // 4. Under "Authorized redirect URIs", ADD the same URL (though not strictly used for popup flow, good practice)
-        // 5. If you see "Referer" errors, check your API Key restrictions.
+        // GUIDE FOR: https://marcoj03rgensen.github.io/NarrativeOS/
+        // 1. Go to Google Cloud Console: https://console.cloud.google.com/
+        // 2. Create a new project (e.g., "NarrativeOS").
+        // 3. Enable "Google Drive API" in "APIs & Services" > "Library".
+        // 4. Configure "OAuth Consent Screen" (User Type: External).
+        // 5. Create Credentials > OAuth Client ID (Application Type: Web application).
+        //    - Authorized JavaScript origins: https://marcoj03rgensen.github.io  (EXACTLY THIS, NO SLASH AT END)
+        //    - Authorized redirect URIs:      https://marcoj03rgensen.github.io/NarrativeOS/
+        // 6. Create Credentials > API Key.
         
-        // TODO: User must replace these with their own Client ID and API Key from Google Cloud Console
-        const CLIENT_ID = 'YOUR_CLIENT_ID_HERE'; 
-        const API_KEY = 'YOUR_API_KEY_HERE'; 
+        // TODO: PASTE YOUR KEYS BELOW
+        const CLIENT_ID = '692298824206-ffqjkrgits24tqsk6h22tfcb2gv1m0ip.apps.googleusercontent.com'; 
+        const API_KEY = 'AIzaSyCBwO7tdzYM7B8dJE0BfTz_2WzKNSBhKQg'; 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
@@ -183,28 +186,44 @@
 
           // Initialize Google Drive API
           useEffect(() => {
-            const gapiLoaded = () => {
-              gapi.load('client', async () => {
-                await gapi.client.init({
-                  apiKey: API_KEY,
-                  discoveryDocs: [DISCOVERY_DOC],
+            const initGapi = () => {
+                if (typeof gapi === 'undefined') {
+                    setTimeout(initGapi, 500);
+                    return;
+                }
+                gapi.load('client', async () => {
+                    try {
+                        await gapi.client.init({
+                            apiKey: API_KEY,
+                            discoveryDocs: [DISCOVERY_DOC],
+                        });
+                        setGapiInited(true);
+                    } catch (error) {
+                        console.error("Error initializing GAPI client:", error);
+                    }
                 });
-                setGapiInited(true);
-              });
             };
 
-            const gisLoaded = () => {
-              const client = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: '', // defined later
-              });
-              setTokenClient(client);
-              setGisInited(true);
+            const initGis = () => {
+                if (typeof google === 'undefined') {
+                    setTimeout(initGis, 500);
+                    return;
+                }
+                try {
+                    const client = google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: '', // defined later
+                    });
+                    setTokenClient(client);
+                    setGisInited(true);
+                } catch (error) {
+                    console.error("Error initializing GIS client:", error);
+                }
             };
 
-            if (typeof gapi !== 'undefined') gapiLoaded();
-            if (typeof google !== 'undefined') gisLoaded();
+            initGapi();
+            initGis();
           }, []);
 
           // Initialize Content
@@ -247,7 +266,14 @@
           }, [content, isDirty, isConnectedToDrive, driveFolderId]);
 
           const handleConnectDrive = () => {
-            if (!tokenClient) return;
+            if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
+                alert('Please configure your Google Cloud CLIENT_ID and API_KEY in the code to enable Google Drive integration.');
+                return;
+            }
+            if (!tokenClient) {
+                alert('Google Sign-In client not initialized. Please check your internet connection or API keys.');
+                return;
+            }
             
             tokenClient.callback = async (resp) => {
               if (resp.error !== undefined) {
@@ -319,16 +345,26 @@
 
                   if (driveFileId) {
                       // Update existing file
-                      // Note: Updating file content via gapi client is complex (requires multipart upload). 
-                      // For simplicity in this prototype, we might just create a new version or overwrite if we had the full upload logic.
-                      // Here is a simplified "create new" approach for prototype or we need a helper for multipart.
-                      // Let's try to use the multipart upload for update if possible, or just create new for now to be safe.
-                      
-                      // Actually, let's just create a new file for this prototype to ensure it works without complex multipart logic in one file.
-                      // Ideally we would use PATCH with uploadType=media.
-                      
-                      // Let's stick to "Create" for now, or just log it.
-                      console.log("Saving to drive...");
+                      const form = new FormData();
+                      // We can update metadata (like name) and content together
+                      const updateMetadata = { name: fileName + '.html' };
+                      form.append('metadata', new Blob([JSON.stringify(updateMetadata)], {type: 'application/json'}));
+                      form.append('file', fileContent);
+
+                      const accessToken = gapi.client.getToken().access_token;
+
+                      fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`, {
+                          method: 'PATCH',
+                          headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
+                          body: form
+                      }).then((res) => res.json()).then((val) => {
+                          console.log("File updated:", val);
+                          setIsDirty(false);
+                          setSyncStatus('saved');
+                      }).catch(err => {
+                          console.error("Error updating file:", err);
+                          setSyncStatus('error');
+                      });
                   } else {
                       // Create file
                       const form = new FormData();
@@ -345,6 +381,9 @@
                           setDriveFileId(val.id);
                           setIsDirty(false);
                           setSyncStatus('saved');
+                      }).catch(err => {
+                          console.error("Error creating file:", err);
+                          setSyncStatus('error');
                       });
                   }
               } catch (err) {
@@ -950,9 +989,12 @@
                     </div>
                     
                     <p className="text-gray-400 mb-8 leading-relaxed">
-                      Connect your Google Drive account to keep your documents safe and accessible everywhere. 
+                      This application connects directly to <strong>your personal Google Drive</strong>. 
+                      Your work is saved to a folder named 'NarrativeOS Projects' in your own cloud storage.
                       <br/><br/>
-                      <span className="text-xs text-yellow-500">Note: You must configure CLIENT_ID and API_KEY in the code for this to work.</span>
+                      <span className="text-xs text-gray-500">Privacy Note: No data is sent to any external servers. The app only has access to files it creates.</span>
+                      <br/>
+                      <span className="text-xs text-yellow-500">Dev Note: You must configure CLIENT_ID and API_KEY in the code for this to work.</span>
                     </p>
 
                     {!isConnectedToDrive ? (
