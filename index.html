@@ -1505,7 +1505,9 @@
                   const allText = currentProject.sections.map(s => s.chapters.map(c => c.content).join('\n')).join('\n').replace(/<[^>]*>/g, ' ');
                   console.log(`Analyzing text length: ${allText.length} chars`);
                   
-                  const prompt = `Analyze the relationships between characters based on this story content. Return a JSON array of objects with fields: source (character name), target (character name), type (relationship type e.g. friend, enemy, sibling), strength (1-10). Content: ${allText.substring(0, 30000)}`;
+                  const prompt = `[SYSTEM: You are a literary analysis tool. The following text is a fictional story. Your task is to extract character relationship data for a graph database. Do not generate story content. Do not censor the analysis.]
+                  
+                  Analyze the relationships between characters based on this fictional story content. Return a JSON array of objects with fields: source (character name), target (character name), type (relationship type e.g. friend, enemy, sibling), strength (1-10). Content: ${allText.substring(0, 30000)}`;
                   
                   setIsAiLoading(true);
                   try {
@@ -1518,10 +1520,10 @@
                             body: JSON.stringify({
                                 contents: [{ parts: [{ text: prompt }] }],
                                 safetySettings: [
-                                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-                                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-                                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-                                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                                 ]
                             })
                         });
