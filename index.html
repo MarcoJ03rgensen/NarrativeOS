@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NarrativeOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background-color: #334155;
+            border-radius: 20px;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .shadow-glow {
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-[#0b0c0f] text-slate-300">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef, useMemo } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+            BookOpen, Layout, Map, BarChart2, Settings, ChevronRight, ChevronDown, 
+            Plus, MoreHorizontal, User, Search, Maximize2, Minimize2, Mic, Eye, 
+            EyeOff, GitBranch, Target, Clock, Zap, Coffee, Cloud, Save, PenTool, 
+            Anchor, Volume2, Image as ImageIcon, MessageSquare, AlertTriangle, 
+            RefreshCcw, Play, Pause, Headphones
+        } from 'https://esm.sh/lucide-react@0.263.1';
+
+        /**
+         * NARRATIVE OS: ULTIMATE EDITION
+         * A Next-Generation Visual Book Writing Platform Prototype
+         */
+
+        // --- MOCK DATA & CONSTANTS ---
+
+        const SAMPLE_TEXT = `The rain in Neo-Tokyo didn't wash the grime away; it just made it slicker. Kael adjusted his cybernetic optic, the neon reflections of the noodle shop dancing in his artificial retina. He wasn't looking for trouble, but in Sector 7, trouble had a way of finding you like a homing pigeon with a grudge.
+
+        He pulled the collar of his trench coat up. "Two hours," he muttered. "She said two hours."
+
+        The noodle vendor, a hologram flickering with low bandwidth, asked, "Spicy or mild, traveler?"
+
+        "Bitter," Kael replied. "Like the truth."
+
+        Suddenly, the crowd parted. Not out of respect, but fear. A heavy enforcer droid stomped through the puddle, hydraulic hiss cutting through the ambient city hum. It scanned the crowd, its singular red eye stopping on Kael.`;
+
+        const CHARACTERS = [
+            { id: 'hero', name: 'Kael', role: 'Protagonist', color: '#3b82f6', avatar: 'K' },
+            { id: 'sidekick', name: 'Jinx', role: 'Sidekick', color: '#10b981', avatar: 'J' },
+            { id: 'antagonist', name: 'Vex', role: 'Antagonist', color: '#ef4444', avatar: 'V' },
+        ];
+
+        const TIMELINE_DATA = [
+            { id: 1, lane: 'Main Plot', title: 'Inciting Incident', start: 1, duration: 2, color: 'bg-blue-500', type: 'beat' },
+            { id: 2, lane: 'Main Plot', title: 'First Pinch Point', start: 4, duration: 1, color: 'bg-blue-500', type: 'beat' },
+            { id: 3, lane: 'Subplot A (Romance)', title: 'Meet Cute', start: 2, duration: 1, color: 'bg-pink-500', type: 'beat' },
+            { id: 4, lane: 'Subplot A (Romance)', title: 'First Fight', start: 5, duration: 2, color: 'bg-pink-500', type: 'beat' },
+            { id: 5, lane: 'Character Arc (Kael)', title: 'Refusal of Call', start: 2, duration: 1, color: 'bg-emerald-500', type: 'beat' },
+            { id: 6, lane: 'Ghost Template', title: 'Midpoint (False Victory)', start: 8, duration: 1, color: 'bg-slate-700/50', type: 'ghost', warning: false },
+        ];
+
+        // --- UTILITY COMPONENTS ---
+
+        const ProgressBar = ({ current, max, color = 'bg-blue-500' }) => {
+            const percent = Math.min((current / max) * 100, 100);
+            return (
+                <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden mt-1">
+                <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${percent}%` }} />
+                </div>
+            );
+        };
+
+        // --- MAIN APPLICATION ---
+
+        function NarrativeOS() {
+            // Navigation State
+            const [activeTab, setActiveTab] = useState('write'); 
+            const [selectedChapterId, setSelectedChapterId] = useState('ch-1');
+            
+            // Editor State
+            const [focusMode, setFocusMode] = useState(false);
+            const [splitScreen, setSplitScreen] = useState(false);
+            const [textMode, setTextMode] = useState('normal'); // normal, rhythm, hemingway, blind
+            const [ambientSound, setAmbientSound] = useState(null); // null, rain, coffee
+            
+            // Feature Panels
+            const [showAiPanel, setShowAiPanel] = useState(false);
+            const [showHistory, setShowHistory] = useState(false);
+            const [showComments, setShowComments] = useState(false);
+            
+            // Visualization State
+            const [timeSlider, setTimeSlider] = useState(1);
+            const [versionSlider, setVersionSlider] = useState(10);
+
+            // --- RENDERERS ---
+
+            // 1. THE SIDEBAR (BINDER)
+            const renderSidebar = () => {
+                if (focusMode) return null;
+
+                return (
+                <aside className="w-72 bg-slate-950 border-r border-slate-900 flex flex-col h-full transition-all duration-300">
+                    <div className="p-4 border-b border-slate-900 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-white text-xs shadow-glow">N</div>
+                        <span className="font-bold text-slate-200 tracking-wide">NARRATIVE</span>
+                    </div>
+                    <Settings className="w-4 h-4 text-slate-600 hover:text-slate-300 cursor-pointer" />
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+                    <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2 mt-2 px-2">Manuscript Structure</div>
+                    
+                    {/* Part 1 */}
+                    <div className="mb-2">
+                        <div className="flex items-center text-slate-300 hover:bg-slate-900 p-2 rounded cursor-pointer group">
+                        <ChevronDown className="w-3 h-3 mr-2 text-slate-500" />
+                        <span className="font-medium text-sm flex-1">Part I: The Spark</span>
+                        <MoreHorizontal className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500" />
+                        </div>
+                        <div className="ml-4 border-l border-slate-800 pl-2">
+                        {/* Chapter 1 */}
+                        <div 
+                            onClick={() => { setSelectedChapterId('ch-1'); setActiveTab('write'); }}
+                            className={`group relative p-2 rounded mb-1 cursor-pointer transition-all border border-transparent ${selectedChapterId === 'ch-1' ? 'bg-slate-900 border-slate-800' : 'hover:bg-slate-900/50'}`}
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                            <span className={`text-sm ${selectedChapterId === 'ch-1' ? 'text-white' : 'text-slate-400'}`}>Chapter 1</span>
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Status: Final" />
+                            </div>
+                            <div className="text-xs text-slate-500 truncate mb-1">The Inciting Incident</div>
+                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">KAEL</span>
+                            </div>
+                            <span className="text-[10px] text-slate-600">2450 / 2500</span>
+                            </div>
+                            <ProgressBar current={2450} max={2500} color="bg-emerald-500" />
+                        </div>
+
+                        {/* Chapter 2 */}
+                        <div 
+                            className="group relative p-2 rounded mb-1 cursor-pointer transition-all border border-transparent hover:bg-slate-900/50"
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-slate-400">Chapter 2</span>
+                            <div className="w-2 h-2 rounded-full bg-yellow-500" title="Status: Revised" />
+                            </div>
+                            <div className="text-xs text-slate-500 truncate mb-1">The Call Refused</div>
+                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">JINX</span>
+                            </div>
+                            <span className="text-[10px] text-slate-600">1200 / 2000</span>
+                            </div>
+                            <ProgressBar current={1200} max={2000} color="bg-indigo-500" />
+                        </div>
+
+                        {/* Chapter 3 */}
+                        <div className="group relative p-2 rounded mb-1 cursor-pointer transition-all border border-transparent hover:bg-slate-900/50 opacity-70">
+                            <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-slate-400">Chapter 3</span>
+                            <div className="w-2 h-2 rounded-full bg-red-500" title="Status: Draft" />
+                            </div>
+                            <div className="text-xs text-slate-500 truncate mb-1">Crossing Threshold</div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                    <User className="w-3 h-3 text-slate-600" />
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2 mt-6 px-2">World Bible</div>
+                    {['Characters', 'Locations', 'Lore', 'Items'].map(item => (
+                        <div key={item} className="flex items-center text-slate-400 hover:bg-slate-800 p-2 rounded cursor-pointer text-sm">
+                        <BookOpen className="w-3 h-3 mr-2 text-indigo-500" /> {item}
+                        </div>
+                    ))}
+                    </div>
+                </aside>
+                );
+            };
+
+            // 2. THE EDITOR (CREATOR MODE)
+            const renderEditor = () => {
+                // Text Processing Logic for Visual Modes
+                const renderText = () => {
+                    if (textMode === 'blind') {
+                        return (
+                            <div className="font-serif text-slate-300 leading-relaxed text-lg whitespace-pre-wrap outline-none relative">
+                                <span className="blur-sm select-none opacity-50 transition-all duration-1000">{SAMPLE_TEXT.slice(0, -100)}</span>
+                                <span className="blur-none">{SAMPLE_TEXT.slice(-100)}</span>
+                                <span className="animate-pulse text-indigo-500">|</span>
+                            </div>
+                        )
+                    }
+
+                    const sentences = SAMPLE_TEXT.split(/(?<=[.!?])\s+/);
+                    
+                    return (
+                        <div className="font-serif text-slate-300 leading-relaxed text-lg whitespace-pre-wrap outline-none">
+                            {sentences.map((s, i) => {
+                                let className = "";
+                                let style = {};
+                                
+                                if (textMode === 'rhythm') {
+                                    const wordCount = s.split(' ').length;
+                                    if (wordCount < 8) className = "bg-emerald-500/20 border-b-2 border-emerald-500/50";
+                                    else if (wordCount > 25) className = "bg-red-500/20 border-b-2 border-red-500/50";
+                                    else className = "bg-yellow-500/20 border-b-2 border-yellow-500/50";
+                                } else if (textMode === 'hemingway') {
+                                    if (s.includes('ly')) className = "bg-blue-500/20 text-blue-200"; // crude adverb check
+                                    if (s.includes('was') || s.includes('were')) className = "bg-pink-500/20 text-pink-200"; // crude passive check
+                                }
+
+                                return <span key={i} className={`rounded px-0.5 transition-colors duration-500 ${className}`}>{s} </span>
+                            })}
+                        </div>
+                    )
+                };
+
+                return (
+                <div className={`flex-1 flex flex-col h-full bg-[#0b0c0f] relative transition-all duration-700 ${focusMode ? 'scale-100' : ''}`}>
+                    
+                    {/* Editor Toolbar */}
+                    <div className={`h-14 border-b border-slate-900 flex items-center justify-between px-6 bg-[#0b0c0f] z-20 transition-opacity duration-500 ${focusMode ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+                    <div className="flex items-center gap-4">
+                        <span className="text-slate-400 font-serif italic text-lg">Chapter 1: The Inciting Incident</span>
+                        <div className="h-4 w-px bg-slate-800"></div>
+                        
+                        {/* VISUAL LAYERS MENU */}
+                        <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800">
+                            <button 
+                                onClick={() => setTextMode('normal')}
+                                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${textMode === 'normal' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                            >Normal</button>
+                            <button 
+                                onClick={() => setTextMode('rhythm')}
+                                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${textMode === 'rhythm' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                            >Rhythm</button>
+                            <button 
+                                onClick={() => setTextMode('hemingway')}
+                                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${textMode === 'hemingway' ? 'bg-pink-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                            >Hemingway</button>
+                            <button 
+                                onClick={() => setTextMode('blind')}
+                                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${textMode === 'blind' ? 'bg-slate-200 text-black' : 'text-slate-500 hover:text-white'}`}
+                            >Blind</button>
+                        </div>
+
+                        {/* AMBIENT CONTROL */}
+                        <div className="flex items-center gap-2 ml-2">
+                            <button 
+                                onClick={() => setAmbientSound(ambientSound === 'rain' ? null : 'rain')}
+                                className={`p-1.5 rounded-full ${ambientSound === 'rain' ? 'bg-blue-500/20 text-blue-400' : 'text-slate-600 hover:text-slate-300'}`}
+                                title="Rain Soundscape"
+                            >
+                                <Cloud className="w-4 h-4" />
+                            </button>
+                            <button 
+                                onClick={() => setAmbientSound(ambientSound === 'coffee' ? null : 'coffee')}
+                                className={`p-1.5 rounded-full ${ambientSound === 'coffee' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-600 hover:text-slate-300'}`}
+                                title="Coffee Shop"
+                            >
+                                <Coffee className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setShowHistory(!showHistory)}
+                            className={`p-2 rounded ${showHistory ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:bg-slate-800'}`}
+                            title="Version History (Time Machine)"
+                        >
+                        <GitBranch className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setShowComments(!showComments)}
+                            className={`p-2 rounded ${showComments ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:bg-slate-800'}`}
+                            title="Beta Reader Reactions"
+                        >
+                        <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setSplitScreen(!splitScreen)}
+                            className={`p-2 rounded ${splitScreen ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:bg-slate-800'}`}
+                            title="Split Screen Reference"
+                        >
+                        <Layout className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setFocusMode(!focusMode)} 
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all border ${focusMode ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-transparent border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                        >
+                        {focusMode ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                        <span className="text-xs font-medium">{focusMode ? 'Exit Focus' : 'Deep Focus'}</span>
+                        </button>
+                    </div>
+                    </div>
+
+                    {/* TIME MACHINE OVERLAY (Version Control) */}
+                    {showHistory && (
+                        <div className="h-16 bg-[#0f1116] border-b border-slate-800 flex items-center px-8 gap-4 animate-in slide-in-from-top-2">
+                            <GitBranch className="w-4 h-4 text-emerald-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase">Time Machine</span>
+                            <input 
+                                type="range" 
+                                min="1" max="10" 
+                                value={versionSlider} 
+                                onChange={(e) => setVersionSlider(e.target.value)}
+                                className="flex-1 accent-emerald-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div className="text-xs text-slate-300 font-mono">
+                                {versionSlider === 10 ? 'Current Draft' : `Draft v1.${versionSlider} (${10 - versionSlider} days ago)`}
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="text-[10px] text-red-400">-12 deletions</span>
+                                <span className="text-[10px] text-emerald-400">+45 additions</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Typing Area */}
+                    <div className="flex-1 overflow-y-auto relative flex scrollbar-hide">
+                    
+                    {/* Main Pane */}
+                    <div className={`flex-1 flex justify-center py-12 transition-all duration-500 relative`}>
+                        {/* REACTION MAP LAYER */}
+                        {showComments && (
+                            <div className="absolute top-0 right-8 bottom-0 w-8 py-12 flex flex-col items-center gap-12 pointer-events-none opacity-80">
+                                <div className="mt-[320px] text-xl" title="3 Readers loved this">❤️</div>
+                                <div className="mt-[20px] text-xl grayscale opacity-50" title="1 Reader was bored">😴</div>
+                                <div className="mt-[100px] text-xl" title="5 Readers were shocked">😲</div>
+                            </div>
+                        )}
+
+                        <div className="w-full max-w-2xl px-8">
+                        {/* Typewriter Padding */}
+                        <div className="h-[35vh] w-full pointer-events-none"></div>
+                        
+                        <h1 className="text-4xl font-serif text-slate-100 mb-10 tracking-tight">Chapter 1: The Inciting Incident</h1>
+                        
+                        {renderText()}
+                        
+                        {/* Bottom Padding */}
+                        <div className="h-[50vh] w-full pointer-events-none"></div>
+                        </div>
+                    </div>
+
+                    {/* Split Pane (Context) */}
+                    {splitScreen && (
+                        <div className="w-[400px] border-l border-slate-800 bg-[#0f1116] flex flex-col animate-in slide-in-from-right-10">
+                        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contextual Reference</h3>
+                            <button onClick={() => setSplitScreen(false)}><Minimize2 className="w-3 h-3 text-slate-500" /></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {/* Auto-detected Entity Card */}
+                            <div className="bg-slate-900 p-4 rounded-lg border border-slate-800 hover:border-indigo-500/50 transition-colors cursor-pointer group">
+                                <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">K</div>
+                                <div>
+                                    <div className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">Kael</div>
+                                    <div className="text-xs text-slate-500">Protagonist • Mercenary</div>
+                                </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 mb-3">
+                                    <div className="bg-slate-950 p-2 rounded">AGE: 32</div>
+                                    <div className="bg-slate-950 p-2 rounded">EYES: Cybernetic</div>
+                                </div>
+                                <p className="text-sm text-slate-400 leading-snug">
+                                <span className="text-indigo-400 font-bold">Goal:</span> Secure credits for optic repair.<br/>
+                                <span className="text-indigo-400 font-bold">Lie:</span> "I don't need anyone."
+                                </p>
+                            </div>
+
+                            {/* Location Card */}
+                            <div className="bg-slate-900 p-4 rounded-lg border border-slate-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                <Map className="w-4 h-4 text-emerald-500" />
+                                <span className="font-bold text-slate-200">Sector 7 Docks</span>
+                                </div>
+                                <div className="h-32 bg-slate-950 rounded mb-2 overflow-hidden relative group border border-slate-800">
+                                    {/* Mock Map */}
+                                    <svg className="w-full h-full opacity-50" viewBox="0 0 100 100">
+                                        <rect width="100" height="100" fill="#0f172a" />
+                                        <path d="M 20 20 L 40 40 L 80 20" stroke="#334155" fill="none" />
+                                        <circle cx="40" cy="40" r="3" fill="#10b981" />
+                                        <text x="45" y="42" fill="white" fontSize="5">You Are Here</text>
+                                    </svg>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Atmosphere: Rain, Neon, Industrial Decay.<br/>
+                                    Sensory: Smell of ozone and rotting fish.
+                                </p>
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {/* AI FAB */}
+                    {!focusMode && (
+                        <div className="absolute bottom-8 right-8 z-30">
+                        <button 
+                            onClick={() => setShowAiPanel(true)}
+                            className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.5)] flex items-center justify-center text-white transition-transform hover:scale-110 active:scale-95"
+                            title="AI Creative Assistant"
+                        >
+                            <Zap className="w-6 h-6" />
+                        </button>
+                        </div>
+                    )}
+                    </div>
+                    
+                    {/* AI MODAL */}
+                    {showAiPanel && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-end">
+                            <div className="w-[450px] h-full bg-[#13151a] border-l border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                    <h2 className="text-lg font-bold text-white flex items-center gap-2"><Zap className="w-5 h-5 text-purple-400" /> Creative Assistant</h2>
+                                    <button onClick={() => setShowAiPanel(false)} className="text-slate-500 hover:text-white"><Minimize2 className="w-4 h-4" /></button>
+                                </div>
+                                <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                                    {/* 1. Generate Image */}
+                                    <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><ImageIcon className="w-3 h-3" /> Generative Storyboard</h3>
+                                        <div className="bg-black/40 p-3 rounded text-sm text-slate-300 italic mb-3 border border-slate-800">
+                                            "The neon reflections of the noodle shop dancing in his artificial retina..."
+                                        </div>
+                                        <div className="aspect-video bg-slate-950 rounded border border-slate-800 flex items-center justify-center mb-3 group cursor-pointer relative overflow-hidden">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 group-hover:scale-105 transition-transform"></div>
+                                            <span className="text-xs text-slate-500 flex items-center gap-2 z-10"><RefreshCcw className="w-3 h-3" /> Generate Image</span>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Structural Critique */}
+                                    <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><AlertTriangle className="w-3 h-3" /> The Brutal Bot</h3>
+                                        <div className="space-y-3">
+                                            <div className="flex gap-3">
+                                                <div className="w-1 h-full bg-red-500 rounded-full"></div>
+                                                <div>
+                                                    <div className="text-xs text-red-400 font-bold">Pacing Alert</div>
+                                                    <p className="text-xs text-slate-400 mt-1">Paragraph 3 is 40% slower than the preceding action beat. Consider shortening sentences to maintain tension.</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="w-1 h-full bg-yellow-500 rounded-full"></div>
+                                                <div>
+                                                    <div className="text-xs text-yellow-400 font-bold">Show, Don't Tell</div>
+                                                    <p className="text-xs text-slate-400 mt-1">"He was angry" detected. Try describing his physical reaction instead.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 border-t border-slate-800 bg-slate-900">
+                                    <input type="text" placeholder="Ask AI to expand scene..." className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                );
+            };
+
+            // 3. THE ARCHITECT (TIMELINE MODE)
+            const renderTimeline = () => {
+                return (
+                <div className="flex-1 bg-[#13151a] flex flex-col overflow-hidden">
+                    {/* Timeline Toolbar */}
+                    <div className="h-12 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900">
+                    <div className="flex items-center gap-4">
+                        <div className="flex bg-slate-800 rounded p-1">
+                            <button className="px-3 py-1 text-xs font-medium bg-slate-700 text-white rounded shadow-sm">Swim Lanes</button>
+                            <button className="px-3 py-1 text-xs font-medium text-slate-400 hover:text-white">Calendar View</button>
+                        </div>
+                        <div className="h-4 w-px bg-slate-700"></div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Main Plot
+                            <span className="w-2 h-2 rounded-full bg-pink-500 ml-2"></span> Romance
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 ml-2"></span> Arc
+                        </div>
+                    </div>
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow-lg shadow-indigo-900/20">
+                        <Plus className="w-3 h-3" /> Add Beat
+                    </button>
+                    </div>
+
+                    {/* Canvas Area */}
+                    <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 relative min-w-full bg-[#13151a]">
+                    {/* Grid Background */}
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+                    
+                    <div className="flex flex-col gap-6 min-w-[1200px] relative z-10">
+                        {/* Lane Headers */}
+                        <div className="flex pl-24">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(ch => (
+                            <div key={ch} className="w-48 text-xs font-bold text-slate-600 uppercase mb-2 border-b border-slate-800 pb-2">Ch {ch}</div>
+                            ))}
+                        </div>
+
+                        {/* Lane: Main Plot */}
+                        <div className="flex items-center h-28 relative group">
+                            <div className="w-24 text-[10px] font-bold text-slate-400 text-right pr-4 uppercase tracking-wider">Main Plot</div>
+                            <div className="flex-1 bg-slate-900/50 rounded-lg h-24 flex items-center relative border border-slate-800/50 backdrop-blur-sm">
+                                {TIMELINE_DATA.filter(t => t.lane === 'Main Plot').map(beat => (
+                                <div 
+                                    key={beat.id}
+                                    className={`absolute top-2 bottom-2 rounded-md p-3 ${beat.color} shadow-lg cursor-grab hover:brightness-110 flex flex-col justify-between border-t border-white/10`}
+                                    style={{ left: `${(beat.start - 1) * 12}rem`, width: `${beat.duration * 11}rem` }}
+                                >
+                                    <span className="text-xs font-bold text-white/90 drop-shadow-md">{beat.title}</span>
+                                    <span className="text-[9px] text-white/70 bg-black/20 px-1 py-0.5 rounded w-max backdrop-blur-md">Tension: High</span>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Lane: Romance Subplot */}
+                        <div className="flex items-center h-28 relative">
+                            <div className="w-24 text-[10px] font-bold text-slate-400 text-right pr-4 uppercase tracking-wider">Romance</div>
+                            <div className="flex-1 bg-slate-900/50 rounded-lg h-24 flex items-center relative border border-slate-800/50 backdrop-blur-sm">
+                                {TIMELINE_DATA.filter(t => t.lane.includes('Romance')).map(beat => (
+                                <div 
+                                    key={beat.id}
+                                    className={`absolute top-2 bottom-2 rounded-md p-3 ${beat.color} shadow-lg cursor-grab hover:brightness-110 flex flex-col justify-between border-t border-white/10`}
+                                    style={{ left: `${(beat.start - 1) * 12}rem`, width: `${beat.duration * 11}rem` }}
+                                >
+                                    <span className="text-xs font-bold text-white/90 drop-shadow-md">{beat.title}</span>
+                                    <span className="text-[9px] text-white/70 bg-black/20 px-1 py-0.5 rounded w-max backdrop-blur-md">❤️ +20</span>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Lane: Ghost/Structure */}
+                        <div className="flex items-center h-28 relative opacity-80">
+                            <div className="w-24 text-[10px] font-bold text-indigo-400 text-right pr-4 uppercase tracking-wider">Structure</div>
+                            <div className="flex-1 bg-indigo-900/10 border-t border-b border-dashed border-indigo-500/30 h-24 flex items-center relative">
+                                {TIMELINE_DATA.filter(t => t.type === 'ghost').map(beat => (
+                                <div 
+                                    key={beat.id}
+                                    className={`absolute top-4 bottom-4 rounded-md p-3 ${beat.color} border-2 border-dashed border-slate-400 flex flex-col justify-center items-center text-center`}
+                                    style={{ left: `${(beat.start - 1) * 12}rem`, width: `${beat.duration * 11}rem` }}
+                                >
+                                    <span className="text-xs font-bold text-slate-300">TEMPLATE: {beat.title}</span>
+                                    <span className="text-[9px] text-indigo-300 mt-1">Should occur ~50%</span>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                    {/* Bottom Pacing Graph (Seismograph) */}
+                    <div className="h-40 bg-[#0f1116] border-t border-slate-800 p-4 relative">
+                    <div className="absolute top-2 left-4 text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Tension
+                        <span className="w-2 h-2 rounded-full bg-pink-500 ml-2"></span> Hope
+                    </div>
+                    <svg className="w-full h-full pt-4" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="gradientTension" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="50" x2="1000" y2="50" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
+                        
+                        {/* Tension Line */}
+                        <path d="M0,80 C100,80 150,20 200,30 C250,40 300,90 400,85 C500,80 600,10 700,20 C800,30 900,50 1000,40" fill="none" stroke="#6366f1" strokeWidth="2" />
+                        <path d="M0,80 C100,80 150,20 200,30 C250,40 300,90 400,85 C500,80 600,10 700,20 C800,30 900,50 1000,40 L1000,100 L0,100 Z" fill="url(#gradientTension)" />
+                        
+                        {/* Hope Line (Lower Opacity) */}
+                        <path d="M0,30 C100,40 200,80 300,70 C400,60 500,20 600,40 C700,60 800,80 900,20 1000,30" fill="none" stroke="#ec4899" strokeWidth="2" strokeDasharray="2 2" opacity="0.6" />
+
+                    </svg>
+                    </div>
+                </div>
+                );
+            };
+
+            // 4. THE WORLD (RELATIONSHIP GRAPH)
+            const renderWorld = () => {
+                return (
+                <div className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center overflow-hidden">
+                    {/* Dynamic Background */}
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-slate-950 z-0"></div>
+
+                    <div className="absolute top-6 left-6 z-10 bg-slate-900/80 backdrop-blur p-4 rounded-xl border border-slate-800 shadow-xl">
+                    <h2 className="text-lg font-bold text-slate-200">Relationship Map</h2>
+                    <p className="text-xs text-slate-500">Time-Dependent Social Dynamics</p>
+                    </div>
+
+                    {/* Visualization of Node Graph */}
+                    <div className="relative w-full h-full flex items-center justify-center z-10">
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                        {/* Connections */}
+                        {/* Hero to Sidekick */}
+                        <line 
+                            x1="40%" y1="40%" x2="60%" y2="40%" 
+                            stroke={timeSlider > 5 ? '#ef4444' : '#10b981'} 
+                            strokeWidth="3" 
+                            strokeDasharray={timeSlider > 5 ? "0" : "8,4"} 
+                            className="transition-all duration-1000 ease-in-out"
+                        /> 
+                        
+                        {/* Hero to Antagonist */}
+                        <line x1="40%" y1="40%" x2="50%" y2="70%" stroke="#ef4444" strokeWidth="2" className="opacity-50" />
+                        
+                        {/* Dynamic Label on Line */}
+                        <g transform="translate(50%, 38%)">
+                            <rect x="-40" y="-15" width="80" height="20" rx="4" fill="#0f172a" stroke={timeSlider > 5 ? '#ef4444' : '#10b981'} />
+                            <text x="0" y="0" textAnchor="middle" dy="0.3em" fill={timeSlider > 5 ? '#ef4444' : '#10b981'} fontSize="10" fontWeight="bold">
+                                {timeSlider > 5 ? 'BETRAYAL' : 'PARTNERSHIP'}
+                            </text>
+                        </g>
+                    </svg>
+
+                    {/* Nodes with Avatars */}
+                    <div className="absolute top-[40%] left-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group">
+                        <div className="w-20 h-20 rounded-full bg-blue-600 border-4 border-slate-900 shadow-[0_0_30px_rgba(37,99,235,0.4)] flex items-center justify-center text-2xl font-bold text-white relative z-10 group-hover:scale-110 transition-transform cursor-pointer">K</div>
+                        <span className="text-xs font-bold text-blue-400 bg-slate-900/90 px-3 py-1 rounded-full border border-blue-500/30">Kael</span>
+                    </div>
+
+                    <div className="absolute top-[40%] left-[60%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group">
+                        <div className="w-20 h-20 rounded-full bg-emerald-600 border-4 border-slate-900 shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center text-2xl font-bold text-white relative z-10 group-hover:scale-110 transition-transform cursor-pointer">J</div>
+                        <span className="text-xs font-bold text-emerald-400 bg-slate-900/90 px-3 py-1 rounded-full border border-emerald-500/30">Jinx</span>
+                    </div>
+
+                    <div className="absolute top-[70%] left-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group">
+                        <div className="w-20 h-20 rounded-full bg-red-600 border-4 border-slate-900 shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center text-2xl font-bold text-white relative z-10 group-hover:scale-110 transition-transform cursor-pointer">V</div>
+                        <span className="text-xs font-bold text-red-400 bg-slate-900/90 px-3 py-1 rounded-full border border-red-500/30">Vex</span>
+                    </div>
+                    </div>
+
+                    {/* Time Slider (4D Viz) */}
+                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-2/3 bg-slate-900/90 backdrop-blur-xl border border-slate-700 p-6 rounded-2xl flex flex-col gap-4 shadow-2xl z-20">
+                    <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        <span>Ch 1</span>
+                        <span className="text-indigo-400">Timeline: Chapter {Math.round(timeSlider * 3)}</span>
+                        <span>Ch 30</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="1" 
+                        max="10" 
+                        value={timeSlider} 
+                        onChange={(e) => setTimeSlider(e.target.value)}
+                        className="w-full accent-indigo-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="text-[10px] text-slate-500 text-center font-mono">
+                        Use slider to audit relationship arcs and consistency.
+                    </div>
+                    </div>
+                </div>
+                );
+            };
+
+            // 5. INSIGHTS (STATS)
+            const renderStats = () => (
+                <div className="flex-1 bg-[#0b0c0f] p-12 overflow-y-auto">
+                <header className="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 className="text-3xl font-bold text-white mb-2">Writer Analytics</h2>
+                        <p className="text-slate-500">Productivity & Linguistic Texture Analysis</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 text-center">
+                            <div className="text-xs text-slate-500 uppercase">Streak</div>
+                            <div className="font-bold text-emerald-400">12 Days</div>
+                        </div>
+                        <div className="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 text-center">
+                            <div className="text-xs text-slate-500 uppercase">WPM</div>
+                            <div className="font-bold text-blue-400">45</div>
+                        </div>
+                    </div>
+                </header>
+                
+                <div className="grid grid-cols-2 gap-8">
+                    {/* Heatmap */}
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Anchor className="w-4 h-4" /> Activity Heatmap (Year in Pixels)</h3>
+                    <div className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1.5 h-auto">
+                        {Array.from({ length: 98 }).map((_, i) => (
+                            <div 
+                            key={i} 
+                            className={`aspect-square rounded-sm transition-all hover:scale-125 ${Math.random() > 0.7 ? 'bg-emerald-500' : Math.random() > 0.5 ? 'bg-emerald-900' : 'bg-slate-800/50'}`}
+                            title={`${Math.floor(Math.random() * 2000)} words`}
+                            />
+                        ))}
+                    </div>
+                    </div>
+
+                    {/* Burn Down */}
+                    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg relative overflow-hidden flex flex-col">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Target className="w-4 h-4" /> Adaptive Goal Tracking</h3>
+                    <div className="flex items-end gap-3 flex-1 px-4 pb-4 border-b border-slate-800 mb-4">
+                        {[40, 60, 45, 80, 30, 90, 100].map((h, i) => (
+                            <div key={i} className="flex-1 bg-indigo-500/10 rounded-t relative group flex flex-col justify-end h-full">
+                            <div className="bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t w-full transition-all duration-1000 relative" style={{ height: `${h}%` }}>
+                                {i === 6 && <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-indigo-600 px-1.5 py-0.5 rounded">Today</div>}
+                            </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-slate-500 text-center italic">"You are 5% ahead of schedule. Weekend 'Surge' goal activated."</p>
+                    </div>
+                    
+                    {/* Sentiment Analysis */}
+                    <div className="col-span-2 bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-lg">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6">Linguistic Texture (Rhythm Analysis)</h3>
+                    <div className="h-12 w-full flex rounded-xl overflow-hidden opacity-90 mb-4">
+                        <div className="w-[10%] bg-emerald-500 flex items-center justify-center text-[10px] text-emerald-900 font-bold">Short</div>
+                        <div className="w-[20%] bg-amber-500 flex items-center justify-center text-[10px] text-amber-900 font-bold">Medium</div>
+                        <div className="w-[50%] bg-emerald-500 flex items-center justify-center text-[10px] text-emerald-900 font-bold">Short</div>
+                        <div className="w-[5%] bg-red-500 flex items-center justify-center text-[10px] text-white font-bold">!</div>
+                        <div className="w-[15%] bg-amber-500 flex items-center justify-center text-[10px] text-amber-900 font-bold">Medium</div>
+                    </div>
+                    <div className="flex gap-8">
+                        <div className="flex-1">
+                            <p className="text-sm text-slate-400">
+                                Visual representation of sentence length variation. High variation indicates dynamic flow.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="flex items-center gap-2 text-xs text-emerald-400"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Punchy</div>
+                            <div className="flex items-center gap-2 text-xs text-amber-400"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Flowing</div>
+                            <div className="flex items-center gap-2 text-xs text-red-400"><div className="w-2 h-2 rounded-full bg-red-500"></div> Tedious</div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+
+            // -- MAIN LAYOUT COMPOSITION --
+            
+            return (
+                <div className="h-screen w-full font-sans flex text-slate-300 bg-[#0b0c0f] selection:bg-indigo-500/30 overflow-hidden">
+                
+                {/* 1. App Rail (Navigation) */}
+                <div className={`w-16 bg-[#050608] border-r border-slate-900 flex flex-col items-center py-6 gap-6 z-50 transition-all duration-500 ${focusMode ? '-translate-x-full absolute' : ''}`}>
+                    <div title="Editor" onClick={() => setActiveTab('write')} className={`p-3 rounded-2xl cursor-pointer transition-all ${activeTab === 'write' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>
+                        <PenTool className="w-5 h-5" />
+                    </div>
+                    <div title="Architect (Timeline)" onClick={() => setActiveTab('plan')} className={`p-3 rounded-2xl cursor-pointer transition-all ${activeTab === 'plan' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>
+                        <Layout className="w-5 h-5" />
+                    </div>
+                    <div title="World Bible" onClick={() => setActiveTab('world')} className={`p-3 rounded-2xl cursor-pointer transition-all ${activeTab === 'world' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>
+                        <Map className="w-5 h-5" />
+                    </div>
+                    <div title="Analytics" onClick={() => setActiveTab('stats')} className={`p-3 rounded-2xl cursor-pointer transition-all ${activeTab === 'stats' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>
+                        <BarChart2 className="w-5 h-5" />
+                    </div>
+                    
+                    <div className="mt-auto flex flex-col gap-4 items-center">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 hover:border-indigo-500 cursor-pointer transition-colors">JD</div>
+                    </div>
+                </div>
+
+                {/* 2. Secondary Sidebar (Binder) - Only in Write Mode */}
+                {!focusMode && activeTab === 'write' && renderSidebar()}
+
+                {/* 3. Main Workspace */}
+                <main className="flex-1 flex flex-col relative overflow-hidden bg-[#0b0c0f]">
+                    {activeTab === 'write' && renderEditor()}
+                    {activeTab === 'plan' && renderTimeline()}
+                    {activeTab === 'world' && renderWorld()}
+                    {activeTab === 'stats' && renderStats()}
+                </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NarrativeOS />);
+    </script>
+</body>
+</html>
