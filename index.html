@@ -264,7 +264,10 @@
           const [isDirty, setIsDirty] = useState(false);
           const [syncStatus, setSyncStatus] = useState('saved'); 
           const [showCloudModal, setShowCloudModal] = useState(false);
-          const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
+          const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => {
+              const stored = localStorage.getItem('narrativeos-connected');
+              return stored === 'true';
+          });
           const [wordCount, setWordCount] = useState(0);
           const [charCount, setCharCount] = useState(0);
           const [focusMode, setFocusMode] = useState(false);
@@ -290,9 +293,15 @@
           const [tokenClient, setTokenClient] = useState(null);
           const [gapiInited, setGapiInited] = useState(false);
           const [gisInited, setGisInited] = useState(false);
-          const [driveFolderId, setDriveFolderId] = useState(null);
+          const [driveFolderId, setDriveFolderId] = useState(() => {
+              const stored = localStorage.getItem('narrativeos-drive-folder');
+              return stored || null;
+          });
           const [driveFileId, setDriveFileId] = useState(null);
-          const [userInfo, setUserInfo] = useState(null);
+          const [userInfo, setUserInfo] = useState(() => {
+              const stored = localStorage.getItem('narrativeos-user-info');
+              return stored ? JSON.parse(stored) : null;
+          });
 
           const editorRef = useRef(null);
           const imageInputRef = useRef(null);
@@ -343,6 +352,24 @@
             initGapi();
             initGis();
           }, []);
+          
+          // Check for existing token on mount
+          useEffect(() => {
+              if (gapiInited && gisInited) {
+                  const token = gapi.client.getToken();
+                  if (token && token.access_token) {
+                      setIsConnectedToDrive(true);
+                      localStorage.setItem('narrativeos-connected', 'true');
+                      // Fetch user info if we have a token
+                      gapi.client.drive.about.get({fields: 'user'}).then(resp => {
+                          setUserInfo(resp.result.user);
+                          localStorage.setItem('narrativeos-user-info', JSON.stringify(resp.result.user));
+                      }).catch(err => {
+                          console.error('Failed to fetch user info:', err);
+                      });
+                  }
+              }
+          }, [gapiInited, gisInited]);
 
           // Initialize Content
           useEffect(() => {
@@ -393,11 +420,13 @@
                 throw (resp);
               }
               setIsConnectedToDrive(true);
+              localStorage.setItem('narrativeos-connected', 'true');
               
               // Fetch user info to confirm identity
               try {
                   const about = await gapi.client.drive.about.get({fields: 'user'});
                   setUserInfo(about.result.user);
+                  localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
               } catch (e) {
                   console.error("Could not fetch user info", e);
               }
@@ -436,6 +465,7 @@
                       folderId = createResponse.result.id;
                   }
                   setDriveFolderId(folderId);
+                  localStorage.setItem('narrativeos-drive-folder', folderId);
                   setShowCloudModal(false);
                   setSyncStatus('saved');
                   alert('Connected to Google Drive! Folder "NarrativeOS Projects" ready.');
@@ -810,7 +840,7 @@
                   </button>
                   
                   <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-white/10 cursor-pointer hover:scale-105 transition-transform" title={userInfo ? `Signed in as ${userInfo.displayName} (${userInfo.emailAddress})` : 'Not signed in'}>
-                    {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : 'JD'}
+                    {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : 'USER'}
                   </div>
                 </div>
               </div>
@@ -1240,7 +1270,20 @@
                          {userInfo && <p className="text-sm text-emerald-300 mt-1">Connected as {userInfo.displayName}</p>}
                          <p className="text-sm text-gray-400 mt-1">Folder: NarrativeOS Projects</p>
                          <button 
-                           onClick={() => { setIsConnectedToDrive(false); setUserInfo(null); setShowCloudModal(false); }}
+                           onClick={() => { 
+                               setIsConnectedToDrive(false); 
+                               setUserInfo(null); 
+                               setShowCloudModal(false);
+                               localStorage.removeItem('narrativeos-connected');
+                               localStorage.removeItem('narrativeos-user-info');
+                               localStorage.removeItem('narrativeos-drive-folder');
+                               // Revoke token
+                               const token = gapi.client.getToken();
+                               if (token !== null) {
+                                   google.accounts.oauth2.revoke(token.access_token);
+                                   gapi.client.setToken('');
+                               }
+                           }}
                            className="mt-6 text-rose-400 text-sm font-semibold hover:text-rose-300 transition-colors"
                          >
                            Disconnect Account
@@ -2187,7 +2230,7 @@
                     </div>
                     
                     <div className="mt-auto flex flex-col gap-4 items-center">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 hover:border-indigo-500 cursor-pointer transition-colors">JD</div>
+                        <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 hover:border-indigo-500 cursor-pointer transition-colors">USER</div>
                     </div>
                 </div>
 
