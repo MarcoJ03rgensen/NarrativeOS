@@ -2387,6 +2387,9 @@
                     if (!token || !token.access_token) {
                         // Token missing - skip sync silently
                         // User will need to re-authenticate manually
+                        setSyncStatus('unsaved');
+                        setIsConnectedToDrive(false);
+                        localStorage.removeItem('narrativeos-connected');
                         return;
                     }
                     
@@ -2446,8 +2449,10 @@
                             }
                         }
                     }
+                    setSyncStatus('saved');
                 } catch (err) {
                     console.error('Error pushing projects to Drive:', err);
+                    setSyncStatus('error');
                 }
             };
 
@@ -2457,8 +2462,10 @@
                 
                 const token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    // Token expired or missing - reset status if it was syncing
-                    if (syncStatus === 'syncing') setSyncStatus('saved');
+                    // Token expired or missing - mark unsaved and require reconnect
+                    setSyncStatus('unsaved');
+                    setIsConnectedToDrive(false);
+                    localStorage.removeItem('narrativeos-connected');
                     return;
                 }
                 
