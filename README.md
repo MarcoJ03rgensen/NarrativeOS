@@ -33,6 +33,18 @@ NarrativeOS uses Google's Gemini API, which offers a generous free tier. You nee
    - In the input field at the bottom of the panel, paste your API key when prompted.
    - The key is saved locally in your browser, so you only need to do this once.
 
+## Using Open Source Models (Hugging Face)
+
+You can also use open-source models like Bloom or Llama via Hugging Face.
+
+1. Get a token from [Hugging Face Settings](https://huggingface.co/settings/tokens).
+2. Select "Hugging Face" in the AI provider dropdown.
+3. Enter your token.
+
+**Note on CORS Errors:**
+Because this runs entirely in the browser (client-side), you may encounter "CORS" or "Failed to fetch" errors when connecting to Hugging Face. This is a browser security feature.
+*   **Workaround (For personal use only):** You can install a "Allow CORS" extension in your browser (e.g., [Allow CORS: Access-Control-Allow-Origin](https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf) for Chrome/Edge) to bypass this restriction while you work. Note that this is a developer hack and only works for your specific browser instance.
+
 ## Google Drive Integration
 
 To enable cloud sync, the application uses a default configuration. If you are hosting this yourself, you may need to configure your own Google Cloud Project credentials in the code.
