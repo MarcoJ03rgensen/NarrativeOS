@@ -64,4 +64,4 @@ To enable cloud sync, the application uses a default configuration. If you are h
 
 **Copyright (c) 2025 Marco Birkedahl Jørgensen. All Rights Reserved.**
 
-This project is proprietary software. Unauthorized copying, modification, distribution, or use of this file, via any medium, is strictly prohibited. The software is provided "as is" without warranty of any kind.
+This project is proprietary software. Unauthorized copying, modification, distribution, or use of this file, except via the public site, is strictly prohibited. The software is provided "as is" without warranty of any kind.

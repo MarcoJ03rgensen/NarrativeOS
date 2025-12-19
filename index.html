@@ -360,7 +360,7 @@
 
         const Divider = () => <div className="w-px h-6 bg-white/10 mx-2 self-center"></div>;
 
-        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive }) {
+        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive, userInfo, setUserInfo }) {
           const [content, setContent] = useState(initialContent || '');
           const [fileName, setFileName] = useState(projectName || 'Untitled Project');
           const [isDirty, setIsDirty] = useState(false);
@@ -2924,6 +2924,8 @@
                             GITHUB_MODELS={GITHUB_MODELS}
                             isConnectedToDrive={isConnectedToDrive}
                             onConnectDrive={handleConnectDrive}
+                            userInfo={userInfo}
+                            setUserInfo={setUserInfo}
                             onContentChange={(content) => saveChapterContent(content)}
                             onStatsUpdate={(w, c) => {
                                 setGlobalWordCount(w);
