@@ -1717,7 +1717,7 @@
                                 const dx = nextNodes[i].x - nextNodes[j].x;
                                 const dy = nextNodes[i].y - nextNodes[j].y;
                                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                                const force = 2000 / (dist * dist); // Repulsion strength
+                                const force = 5000 / (dist * dist); // Increased Repulsion
                                 const fx = (dx / dist) * force;
                                 const fy = (dy / dist) * force;
 
@@ -1736,7 +1736,7 @@
                                 const dx = target.x - source.x;
                                 const dy = target.y - source.y;
                                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                                const force = (dist - 150) * 0.05; // Spring force (target distance 150)
+                                const force = (dist - 300) * 0.05; // Increased Spring Length (300)
                                 const fx = (dx / dist) * force;
                                 const fy = (dy / dist) * force;
 
@@ -1820,12 +1820,12 @@
                             })}
                             {/* Nodes */}
                             {nodes.map((node, i) => (
-                                <g key={node.id} transform={`translate(${node.x},${node.y})`} className="cursor-pointer hover:scale-110 transition-transform duration-200">
-                                    <circle r="25" fill="#1e1b4b" stroke={node.color} strokeWidth="2" filter="url(#glow)" />
-                                    <text dy="5" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" pointerEvents="none">
+                                <g key={node.id} transform={`translate(${node.x},${node.y})`} className="cursor-pointer group">
+                                    <circle r="30" fill="#1e1b4b" stroke={node.color} strokeWidth="2" filter="url(#glow)" className="transition-transform duration-200 group-hover:scale-110" />
+                                    <text dy="5" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold" pointerEvents="none">
                                         {node.id.substring(0, 2).toUpperCase()}
                                     </text>
-                                    <text dy="40" textAnchor="middle" fill="#cbd5e1" fontSize="12" fontWeight="bold" className="drop-shadow-md">
+                                    <text dy="50" textAnchor="middle" fill="#cbd5e1" fontSize="14" fontWeight="bold" className="drop-shadow-md bg-black/50 px-2 rounded">
                                         {node.id}
                                     </text>
                                 </g>
@@ -1865,6 +1865,28 @@
                             <p className="text-xs text-slate-300 mt-2 italic">
                                 "{relationshipTimeline[timelineIndex].description}"
                             </p>
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-800">
+                                <button 
+                                    onClick={() => {
+                                        const allRels = [];
+                                        const seen = new Set();
+                                        // Iterate backwards to prioritize latest relationships
+                                        [...relationshipTimeline].reverse().forEach(step => {
+                                            step.relationships.forEach(r => {
+                                                const key = `${r.source}-${r.target}`;
+                                                if (!seen.has(key)) {
+                                                    seen.add(key);
+                                                    allRels.push(r);
+                                                }
+                                            });
+                                        });
+                                        setRelationships(allRels);
+                                    }}
+                                    className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1"
+                                >
+                                    <Maximize2 className="w-3 h-3" /> Show All Relationships
+                                </button>
+                            </div>
                         </div>
                     )}
                     
