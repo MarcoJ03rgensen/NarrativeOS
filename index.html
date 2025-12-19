@@ -97,7 +97,7 @@
             List, ListOrdered, Indent, Outdent, Link as LinkIcon, 
             RemoveFormatting, Strikethrough, Subscript, Superscript, 
             Table as TableIcon, Type, Highlighter, Heading1, Palette,
-            Maximize, Minimize, FileDown, X, Loader2
+            Maximize, Minimize, FileDown, X, Loader2, Trash2
         } from 'https://esm.sh/lucide-react@0.263.1';
 
         /**
@@ -1644,9 +1644,7 @@
             analyzeRelationships,
             isAiLoading
         }) => {
-            const { 
-                Map, Zap, Loader2, Plus, PenTool, X, ChevronDown, Trash2
-            } = lucide;
+            // Icons are imported at the top level
 
             if (!currentProject) return null;
             
