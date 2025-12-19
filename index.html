@@ -2268,6 +2268,12 @@
             const syncToDrive = async (folderId) => {
                 // Push all local projects to Drive (for protecting existing projects on first connection)
                 try {
+                    const token = gapi.client.getToken();
+                    if (!token || !token.access_token) {
+                        console.warn('No valid access token for Drive sync');
+                        return;
+                    }
+                    
                     const localProjects = ProjectStorage.getAllProjects();
                     for (const project of localProjects) {
                         // Skip if already has a Drive ID (already synced)
@@ -2285,7 +2291,7 @@
                         form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
                         form.append('file', fileContent);
 
-                        const accessToken = gapi.client.getToken().access_token;
+                        const accessToken = token.access_token;
                         
                         const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                             method: 'POST',
@@ -2305,6 +2311,14 @@
 
             const saveToDrive = async (project) => {
                 if (!driveFolderId) return;
+                
+                const token = gapi.client.getToken();
+                if (!token || !token.access_token) {
+                    console.warn('No valid access token for Drive save');
+                    setSyncStatus('unsaved');
+                    return;
+                }
+                
                 setSyncStatus('syncing');
                 
                 try {
@@ -2320,7 +2334,7 @@
                         form.append('metadata', new Blob([JSON.stringify(updateMetadata)], {type: 'application/json'}));
                         form.append('file', fileContent);
 
-                        const accessToken = gapi.client.getToken().access_token;
+                        const accessToken = token.access_token;
 
                         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${project.driveFileId}?uploadType=multipart`, {
                             method: 'PATCH',
@@ -2340,7 +2354,7 @@
                         form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
                         form.append('file', fileContent);
 
-                        const accessToken = gapi.client.getToken().access_token;
+                        const accessToken = token.access_token;
                         
                         const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                             method: 'POST',
