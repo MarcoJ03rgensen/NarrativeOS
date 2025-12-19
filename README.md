@@ -59,3 +59,9 @@ You can use models like GPT-4o, Llama 3.1, and Phi-3 via GitHub Models.
 ## Google Drive Integration
 
 To enable cloud sync, the application uses a default configuration. If you are hosting this yourself, you may need to configure your own Google Cloud Project credentials in the code.
+
+## License
+
+**Copyright (c) 2025 Marco Birkedahl Jørgensen. All Rights Reserved.**
+
+This project is proprietary software. Unauthorized copying, modification, distribution, or use of this file, via any medium, is strictly prohibited. The software is provided "as is" without warranty of any kind.

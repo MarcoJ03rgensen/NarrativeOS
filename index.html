@@ -137,7 +137,8 @@
                 targetWords: 80000,
                 genre: '',
                 theme: ''
-            }
+            },
+            driveFileId: null
         };
 
         // Storage Management
@@ -162,6 +163,10 @@
                 localStorage.setItem('narrativeos-projects', JSON.stringify(filtered));
             },
             
+            saveAllProjects(projects) {
+                localStorage.setItem('narrativeos-projects', JSON.stringify(projects));
+            },
+            
             getProject(id) {
                 const projects = this.getAllProjects();
                 return projects.find(p => p.id === id) || DEFAULT_PROJECT;
@@ -174,6 +179,7 @@
                     name: name,
                     created: Date.now(),
                     lastModified: Date.now(),
+                    driveFileId: null,
                     sections: [
                         {
                             id: 'section-1',
@@ -195,6 +201,102 @@
                 };
                 this.saveProject(project);
                 return project;
+            }
+        };
+
+        // Stats Management
+        const StatsStorage = {
+            getHistory() {
+                const stored = localStorage.getItem('narrativeos-stats');
+                return stored ? JSON.parse(stored) : {};
+            },
+            saveHistory(history) {
+                localStorage.setItem('narrativeos-stats', JSON.stringify(history));
+            },
+            initializeToday(currentTotalWords) {
+                const history = this.getHistory();
+                const today = new Date().toISOString().split('T')[0];
+                
+                if (!history[today]) {
+                    history[today] = {
+                        date: today,
+                        startWords: currentTotalWords,
+                        currentWords: currentTotalWords,
+                        netWords: 0,
+                        goal: 500 // Default goal
+                    };
+                    this.saveHistory(history);
+                }
+                return history;
+            },
+            updateWordCount(currentTotalWords) {
+                const history = this.getHistory();
+                const today = new Date().toISOString().split('T')[0];
+                
+                if (!history[today]) {
+                    this.initializeToday(currentTotalWords);
+                    return this.getHistory();
+                }
+
+                history[today].currentWords = currentTotalWords;
+                // If startWords is missing (legacy data), set it to current
+                if (history[today].startWords === undefined) history[today].startWords = currentTotalWords;
+                
+                history[today].netWords = currentTotalWords - history[today].startWords;
+                this.saveHistory(history);
+                return history;
+            },
+            setGoal(goal) {
+                const history = this.getHistory();
+                const today = new Date().toISOString().split('T')[0];
+                if (history[today]) {
+                    history[today].goal = parseInt(goal);
+                    this.saveHistory(history);
+                    return history;
+                }
+                return history;
+            },
+            getStreak() {
+                const history = this.getHistory();
+                const activeDays = Object.values(history)
+                    .filter(d => d.netWords > 0)
+                    .map(d => d.date)
+                    .sort((a, b) => new Date(b) - new Date(a)); // Descending
+                    
+                if (activeDays.length === 0) return 0;
+                
+                const todayStr = new Date().toISOString().split('T')[0];
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                // If the most recent active day is not today or yesterday, streak is broken (0)
+                if (activeDays[0] !== todayStr && activeDays[0] !== yesterdayStr) {
+                    return 0;
+                }
+                
+                let currentStreak = 0;
+                let lastDate = null;
+                
+                for (const dateStr of activeDays) {
+                    if (!lastDate) {
+                        lastDate = new Date(dateStr);
+                        currentStreak++;
+                        continue;
+                    }
+                    
+                    const curr = new Date(dateStr);
+                    const diffTime = Math.abs(lastDate - curr);
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+                    
+                    if (diffDays === 1) {
+                        currentStreak++;
+                        lastDate = curr;
+                    } else {
+                        break;
+                    }
+                }
+                return currentStreak;
             }
         };
 
@@ -258,16 +360,12 @@
 
         const Divider = () => <div className="w-px h-6 bg-white/10 mx-2 self-center"></div>;
 
-        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS }) {
+        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive }) {
           const [content, setContent] = useState(initialContent || '');
           const [fileName, setFileName] = useState(projectName || 'Untitled Project');
           const [isDirty, setIsDirty] = useState(false);
           const [syncStatus, setSyncStatus] = useState('saved'); 
           const [showCloudModal, setShowCloudModal] = useState(false);
-          const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => {
-              const stored = localStorage.getItem('narrativeos-connected');
-              return stored === 'true';
-          });
           const [wordCount, setWordCount] = useState(0);
           const [charCount, setCharCount] = useState(0);
           const [focusMode, setFocusMode] = useState(false);
@@ -289,26 +387,11 @@
               }
           }, [ambientSound]);
           
-          // Google Drive State
-          const [tokenClient, setTokenClient] = useState(null);
-          const [gapiInited, setGapiInited] = useState(false);
-          const [gisInited, setGisInited] = useState(false);
-          const [driveFolderId, setDriveFolderId] = useState(() => {
-              const stored = localStorage.getItem('narrativeos-drive-folder');
-              return stored || null;
-          });
-          const [driveFileId, setDriveFileId] = useState(null);
-          
           // AI State
           const [aiPrompt, setAiPrompt] = useState('');
           const [isAiLoading, setIsAiLoading] = useState(false);
           const [chatHistory, setChatHistory] = useState([]);
           const [showChat, setShowChat] = useState(false);
-
-          const [userInfo, setUserInfo] = useState(() => {
-              const stored = localStorage.getItem('narrativeos-user-info');
-              return stored ? JSON.parse(stored) : null;
-          });
 
           const editorRef = useRef(null);
           const imageInputRef = useRef(null);
@@ -317,66 +400,6 @@
           useEffect(() => {
               setFileName(projectName || 'Untitled Project');
           }, [projectName]);
-
-          // Initialize Google Drive API
-          useEffect(() => {
-            const initGapi = () => {
-                if (typeof gapi === 'undefined') {
-                    setTimeout(initGapi, 500);
-                    return;
-                }
-                gapi.load('client', async () => {
-                    try {
-                        await gapi.client.init({
-                            apiKey: API_KEY,
-                            discoveryDocs: [DISCOVERY_DOC],
-                        });
-                        setGapiInited(true);
-                    } catch (error) {
-                        console.error("Error initializing GAPI client:", error);
-                    }
-                });
-            };
-
-            const initGis = () => {
-                if (typeof google === 'undefined') {
-                    setTimeout(initGis, 500);
-                    return;
-                }
-                try {
-                    const client = google.accounts.oauth2.initTokenClient({
-                        client_id: CLIENT_ID,
-                        scope: SCOPES,
-                        callback: '', // defined later
-                    });
-                    setTokenClient(client);
-                    setGisInited(true);
-                } catch (error) {
-                    console.error("Error initializing GIS client:", error);
-                }
-            };
-
-            initGapi();
-            initGis();
-          }, []);
-          
-          // Check for existing token on mount
-          useEffect(() => {
-              if (gapiInited && gisInited) {
-                  const token = gapi.client.getToken();
-                  if (token && token.access_token) {
-                      setIsConnectedToDrive(true);
-                      localStorage.setItem('narrativeos-connected', 'true');
-                      // Fetch user info if we have a token
-                      gapi.client.drive.about.get({fields: 'user'}).then(resp => {
-                          setUserInfo(resp.result.user);
-                          localStorage.setItem('narrativeos-user-info', JSON.stringify(resp.result.user));
-                      }).catch(err => {
-                          console.error('Failed to fetch user info:', err);
-                      });
-                  }
-              }
-          }, [gapiInited, gisInited]);
 
           // Initialize Content
           useEffect(() => {
@@ -398,160 +421,14 @@
                     onContentChange(content);
                 }
                 
-                // Cloud Save
-                if (isConnectedToDrive && driveFolderId) {
-                    saveToDrive();
-                } else {
-                    setTimeout(() => {
-                        setIsDirty(false);
-                        setSyncStatus('saved');
-                    }, 800);
-                }
+                setTimeout(() => {
+                    setIsDirty(false);
+                    setSyncStatus('saved');
+                }, 800);
               }
             }, 5000); // Auto-save every 5s
             return () => clearInterval(interval);
-          }, [content, isDirty, isConnectedToDrive, driveFolderId, onContentChange]);
-
-          const handleConnectDrive = () => {
-            if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
-                alert('Please configure your Google Cloud CLIENT_ID and API_KEY in the code to enable Google Drive integration.');
-                return;
-            }
-            if (!tokenClient) {
-                alert('Google Sign-In client not initialized. Please check your internet connection or API keys.');
-                return;
-            }
-            
-            tokenClient.callback = async (resp) => {
-              if (resp.error !== undefined) {
-                throw (resp);
-              }
-              setIsConnectedToDrive(true);
-              localStorage.setItem('narrativeos-connected', 'true');
-              
-              // Fetch user info to confirm identity
-              try {
-                  const about = await gapi.client.drive.about.get({fields: 'user'});
-                  setUserInfo(about.result.user);
-                  localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
-              } catch (e) {
-                  console.error("Could not fetch user info", e);
-              }
-
-              await ensureProjectFolder();
-            };
-
-            if (gapi.client.getToken() === null) {
-              tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-              tokenClient.requestAccessToken({prompt: ''});
-            }
-          };
-
-          const ensureProjectFolder = async () => {
-              try {
-                  // Check if folder exists
-                  const response = await gapi.client.drive.files.list({
-                      q: "mimeType='application/vnd.google-apps.folder' and name='NarrativeOS Projects' and trashed=false",
-                      fields: 'files(id, name)',
-                  });
-                  
-                  let folderId;
-                  if (response.result.files && response.result.files.length > 0) {
-                      folderId = response.result.files[0].id;
-                  } else {
-                      // Create folder
-                      const fileMetadata = {
-                          'name': 'NarrativeOS Projects',
-                          'mimeType': 'application/vnd.google-apps.folder'
-                      };
-                      const createResponse = await gapi.client.drive.files.create({
-                          resource: fileMetadata,
-                          fields: 'id'
-                      });
-                      folderId = createResponse.result.id;
-                  }
-                  setDriveFolderId(folderId);
-                  localStorage.setItem('narrativeos-drive-folder', folderId);
-                  setShowCloudModal(false);
-                  setSyncStatus('saved');
-                  alert('Connected to Google Drive! Folder "NarrativeOS Projects" ready.');
-              } catch (err) {
-                  console.error('Error creating/finding folder', err);
-                  alert('Error connecting to Drive. Check console.');
-              }
-          };
-
-          const saveToDrive = async () => {
-              if (!driveFolderId) return;
-              
-              try {
-                  // Get current full project from storage
-                  const allProjects = ProjectStorage.getAllProjects();
-                  const currentProjectData = allProjects.find(p => p.name === fileName);
-                  
-                  // Create JSON content with full project data
-                  const projectData = currentProjectData || {
-                      name: fileName,
-                      content: content,
-                      lastModified: Date.now()
-                  };
-                  
-                  const fileContent = new Blob([JSON.stringify(projectData, null, 2)], {type: 'application/json'});
-                  const metadata = {
-                      'name': fileName + '.json',
-                      'mimeType': 'application/json',
-                      'parents': [driveFolderId],
-                      'description': 'NarrativeOS Project Data'
-                  };
-
-                  if (driveFileId) {
-                      // Update existing file
-                      const form = new FormData();
-                      const updateMetadata = { name: fileName + '.json' };
-                      form.append('metadata', new Blob([JSON.stringify(updateMetadata)], {type: 'application/json'}));
-                      form.append('file', fileContent);
-
-                      const accessToken = gapi.client.getToken().access_token;
-
-                      fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`, {
-                          method: 'PATCH',
-                          headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
-                          body: form
-                      }).then((res) => res.json()).then((val) => {
-                          console.log("Project updated:", val);
-                          setIsDirty(false);
-                          setSyncStatus('saved');
-                      }).catch(err => {
-                          console.error("Error updating file:", err);
-                          setSyncStatus('error');
-                      });
-                  } else {
-                      // Create file
-                      const form = new FormData();
-                      form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-                      form.append('file', fileContent);
-
-                      const accessToken = gapi.client.getToken().access_token;
-                      
-                      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                          method: 'POST',
-                          headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
-                          body: form
-                      }).then((res) => res.json()).then((val) => {
-                          setDriveFileId(val.id);
-                          setIsDirty(false);
-                          setSyncStatus('saved');
-                      }).catch(err => {
-                          console.error("Error creating file:", err);
-                          setSyncStatus('error');
-                      });
-                  }
-              } catch (err) {
-                  console.error('Error saving to drive', err);
-                  setSyncStatus('unsaved');
-              }
-          };
+          }, [content, isDirty, onContentChange]);
 
           const updateStats = (htmlContent) => {
             const text = htmlContent.replace(/<[^>]*>/g, ' ').trim();
@@ -1237,7 +1114,7 @@
                               <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign in to Start Writing</h2>
                               <p className="text-gray-600 mb-6">Connect your Google Drive to save your work securely and access it from anywhere.</p>
                               <button 
-                                onClick={handleConnectDrive}
+                                onClick={onConnectDrive}
                                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg transition-all hover:scale-105 flex items-center gap-2 mx-auto"
                               >
                                 <Cloud className="w-5 h-5" />
@@ -2099,6 +1976,11 @@
             const [selectedSectionId, setSelectedSectionId] = useState(null);
             const [selectedChapterId, setSelectedChapterId] = useState(null);
             
+            // Stats State
+            const [stats, setStats] = useState({});
+            const [streak, setStreak] = useState(0);
+            const [globalWordCount, setGlobalWordCount] = useState(0);
+
             // Navigation State
             const [activeTab, setActiveTab] = useState('write'); 
             
@@ -2112,14 +1994,37 @@
             const [showAiPanel, setShowAiPanel] = useState(false);
             const [showHistory, setShowHistory] = useState(false);
             const [showComments, setShowComments] = useState(false);
+
+            // Initialize Stats
+            useEffect(() => {
+                setStats(StatsStorage.getHistory());
+                setStreak(StatsStorage.getStreak());
+            }, []);
+
+            // Update Stats when Project Changes
+            useEffect(() => {
+                if (currentProject) {
+                    // Calculate total words in project
+                    let totalWords = 0;
+                    currentProject.sections.forEach(section => {
+                        section.chapters.forEach(chapter => {
+                            const text = chapter.content.replace(/<[^>]*>/g, ' ').trim();
+                            totalWords += text ? text.split(/\s+/).length : 0;
+                        });
+                    });
+                    
+                    setGlobalWordCount(totalWords);
+                    
+                    // Update Stats Storage
+                    const newHistory = StatsStorage.updateWordCount(totalWords);
+                    setStats(newHistory);
+                    setStreak(StatsStorage.getStreak());
+                }
+            }, [currentProject]);
             
             // Visualization State
             const [timeSlider, setTimeSlider] = useState(1);
             const [versionSlider, setVersionSlider] = useState(10);
-
-            // Global Document State
-            const [globalWordCount, setGlobalWordCount] = useState(0);
-            const [globalCharCount, setGlobalCharCount] = useState(0);
 
             // AI State (Lifted from WordEditor)
             const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('narrativeos-ai-provider') || 'gemini'); // 'gemini' | 'huggingface' | 'github'
@@ -2136,6 +2041,324 @@
             const [relationshipTimeline, setRelationshipTimeline] = useState([]); // Store timeline of relationships
             const [timelineIndex, setTimelineIndex] = useState(0); // Current point in timeline
             const [showRelationshipEditor, setShowRelationshipEditor] = useState(false); // Toggle for editor modal
+
+            // Google Drive State
+            const [tokenClient, setTokenClient] = useState(null);
+            const [gapiInited, setGapiInited] = useState(false);
+            const [gisInited, setGisInited] = useState(false);
+            const [driveFolderId, setDriveFolderId] = useState(() => localStorage.getItem('narrativeos-drive-folder') || null);
+            const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
+            const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
+            const [userInfo, setUserInfo] = useState(() => {
+                const stored = localStorage.getItem('narrativeos-user-info');
+                return stored ? JSON.parse(stored) : null;
+            });
+
+            // Initialize Google Drive API
+            useEffect(() => {
+                const initGapi = () => {
+                    if (typeof gapi === 'undefined') {
+                        setTimeout(initGapi, 500);
+                        return;
+                    }
+                    gapi.load('client', async () => {
+                        try {
+                            await gapi.client.init({
+                                apiKey: API_KEY,
+                                discoveryDocs: [DISCOVERY_DOC],
+                            });
+                            setGapiInited(true);
+                        } catch (error) {
+                            console.error("Error initializing GAPI client:", error);
+                        }
+                    });
+                };
+
+                const initGis = () => {
+                    if (typeof google === 'undefined') {
+                        setTimeout(initGis, 500);
+                        return;
+                    }
+                    try {
+                        const client = google.accounts.oauth2.initTokenClient({
+                            client_id: CLIENT_ID,
+                            scope: SCOPES,
+                            callback: '', // defined later
+                        });
+                        setTokenClient(client);
+                        setGisInited(true);
+                    } catch (error) {
+                        console.error("Error initializing GIS client:", error);
+                    }
+                };
+
+                initGapi();
+                initGis();
+            }, []);
+
+            // Check for existing token on mount
+            useEffect(() => {
+                if (gapiInited && gisInited) {
+                    const token = gapi.client.getToken();
+                    if (token && token.access_token) {
+                        setIsConnectedToDrive(true);
+                        // Fetch user info if we have a token
+                        gapi.client.drive.about.get({fields: 'user'}).then(resp => {
+                            setUserInfo(resp.result.user);
+                            localStorage.setItem('narrativeos-user-info', JSON.stringify(resp.result.user));
+                        }).catch(err => {
+                            console.error('Failed to fetch user info:', err);
+                        });
+                    }
+                }
+            }, [gapiInited, gisInited]);
+
+            // Auto-Sync Current Project to Drive
+            useEffect(() => {
+                if (!currentProject || !isConnectedToDrive || !driveFolderId) return;
+
+                const timeoutId = setTimeout(() => {
+                    saveToDrive(currentProject);
+                }, 2000); // Debounce 2s
+
+                return () => clearTimeout(timeoutId);
+            }, [currentProject, isConnectedToDrive, driveFolderId]);
+
+            const handleConnectDrive = () => {
+                if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
+                    alert('Please configure your Google Cloud CLIENT_ID and API_KEY in the code to enable Google Drive integration.');
+                    return;
+                }
+                if (!tokenClient) {
+                    alert('Google Sign-In client not initialized. Please check your internet connection or API keys.');
+                    return;
+                }
+                
+                tokenClient.callback = async (resp) => {
+                    if (resp.error !== undefined) {
+                        throw (resp);
+                    }
+                    setIsConnectedToDrive(true);
+                    localStorage.setItem('narrativeos-connected', 'true');
+                    
+                    // Fetch user info to confirm identity
+                    try {
+                        const about = await gapi.client.drive.about.get({fields: 'user'});
+                        setUserInfo(about.result.user);
+                        localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
+                    } catch (e) {
+                        console.error("Could not fetch user info", e);
+                    }
+
+                    await ensureProjectFolder();
+                };
+
+                if (gapi.client.getToken() === null) {
+                    tokenClient.requestAccessToken({prompt: 'consent'});
+                } else {
+                    tokenClient.requestAccessToken({prompt: ''});
+                }
+            };
+
+            const ensureProjectFolder = async () => {
+                try {
+                    // Check if folder exists
+                    const response = await gapi.client.drive.files.list({
+                        q: "mimeType='application/vnd.google-apps.folder' and name='NarrativeOS Projects' and trashed=false",
+                        fields: 'files(id, name)',
+                    });
+                    
+                    let folderId;
+                    if (response.result.files && response.result.files.length > 0) {
+                        folderId = response.result.files[0].id;
+                    } else {
+                        // Create folder
+                        const fileMetadata = {
+                            'name': 'NarrativeOS Projects',
+                            'mimeType': 'application/vnd.google-apps.folder'
+                        };
+                        const createResponse = await gapi.client.drive.files.create({
+                            resource: fileMetadata,
+                            fields: 'id'
+                        });
+                        folderId = createResponse.result.id;
+                    }
+                    setDriveFolderId(folderId);
+                    localStorage.setItem('narrativeos-drive-folder', folderId);
+                    
+                    // Sync all projects from Drive and push local projects to Drive
+                    await syncFromDrive(folderId);
+                    await syncToDrive(folderId);
+                    
+                    alert('Connected to Google Drive! All projects synced and protected.');
+                } catch (err) {
+                    console.error('Error creating/finding folder', err);
+                    alert('Error connecting to Drive. Check console.');
+                }
+            };
+
+            const syncFromDrive = async (folderId) => {
+                setSyncStatus('syncing');
+                try {
+                    // List all JSON files in the folder
+                    const response = await gapi.client.drive.files.list({
+                        q: `'${folderId}' in parents and mimeType='application/json' and trashed=false`,
+                        fields: 'files(id, name)',
+                    });
+
+                    const driveFiles = response.result.files;
+                    if (!driveFiles || driveFiles.length === 0) {
+                        setSyncStatus('saved');
+                        return;
+                    }
+
+                    const localProjects = ProjectStorage.getAllProjects();
+                    const updatedProjects = [...localProjects];
+                    let hasChanges = false;
+
+                    for (const file of driveFiles) {
+                        // Download file content
+                        const fileResponse = await gapi.client.drive.files.get({
+                            fileId: file.id,
+                            alt: 'media'
+                        });
+                        
+                        const projectData = fileResponse.result;
+                        
+                        // Ensure it has the driveFileId set
+                        projectData.driveFileId = file.id;
+
+                        // Check if we have this project locally
+                        const localIndex = updatedProjects.findIndex(p => p.id === projectData.id);
+                        
+                        if (localIndex === -1) {
+                            // New project from Drive
+                            updatedProjects.push(projectData);
+                            hasChanges = true;
+                        } else {
+                            // Existing project - check timestamp
+                            if (projectData.lastModified > updatedProjects[localIndex].lastModified) {
+                                updatedProjects[localIndex] = projectData;
+                                hasChanges = true;
+                            } else if (updatedProjects[localIndex].driveFileId !== file.id) {
+                                // Link local project to Drive file if not already linked
+                                updatedProjects[localIndex].driveFileId = file.id;
+                                hasChanges = true;
+                            }
+                        }
+                    }
+
+                    if (hasChanges) {
+                        ProjectStorage.saveAllProjects(updatedProjects);
+                        setProjects(updatedProjects);
+                        // If current project was updated, refresh it
+                        if (currentProject) {
+                            const updatedCurrent = updatedProjects.find(p => p.id === currentProject.id);
+                            if (updatedCurrent) setCurrentProject(updatedCurrent);
+                        }
+                    }
+                    setSyncStatus('saved');
+                } catch (err) {
+                    console.error('Error syncing from Drive:', err);
+                    setSyncStatus('error');
+                }
+            };
+
+            const syncToDrive = async (folderId) => {
+                // Push all local projects to Drive (for protecting existing projects on first connection)
+                try {
+                    const localProjects = ProjectStorage.getAllProjects();
+                    for (const project of localProjects) {
+                        // Skip if already has a Drive ID (already synced)
+                        if (project.driveFileId) continue;
+                        
+                        const fileContent = new Blob([JSON.stringify(project, null, 2)], {type: 'application/json'});
+                        const metadata = {
+                            'name': `${project.name}_${project.id}.json`,
+                            'mimeType': 'application/json',
+                            'parents': [folderId],
+                            'description': 'NarrativeOS Project Data'
+                        };
+                        
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                        form.append('file', fileContent);
+
+                        const accessToken = gapi.client.getToken().access_token;
+                        
+                        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
+                            body: form
+                        });
+                        const val = await res.json();
+                        
+                        // Update local project with new Drive ID to prevent re-uploading
+                        const updatedProject = { ...project, driveFileId: val.id };
+                        ProjectStorage.saveProject(updatedProject);
+                    }
+                } catch (err) {
+                    console.error('Error pushing projects to Drive:', err);
+                }
+            };
+
+            const saveToDrive = async (project) => {
+                if (!driveFolderId) return;
+                setSyncStatus('syncing');
+                
+                try {
+                    const fileContent = new Blob([JSON.stringify(project, null, 2)], {type: 'application/json'});
+                    
+                    // If we have a file ID, update it
+                    if (project.driveFileId) {
+                        const form = new FormData();
+                        const updateMetadata = { 
+                            name: `${project.name}_${project.id}.json`, // Ensure name is up to date
+                            mimeType: 'application/json'
+                        };
+                        form.append('metadata', new Blob([JSON.stringify(updateMetadata)], {type: 'application/json'}));
+                        form.append('file', fileContent);
+
+                        const accessToken = gapi.client.getToken().access_token;
+
+                        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${project.driveFileId}?uploadType=multipart`, {
+                            method: 'PATCH',
+                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
+                            body: form
+                        });
+                    } else {
+                        // Create new file
+                        const metadata = {
+                            'name': `${project.name}_${project.id}.json`, // Unique name: Title_ID.json
+                            'mimeType': 'application/json',
+                            'parents': [driveFolderId],
+                            'description': 'NarrativeOS Project Data'
+                        };
+                        
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                        form.append('file', fileContent);
+
+                        const accessToken = gapi.client.getToken().access_token;
+                        
+                        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
+                            body: form
+                        });
+                        const val = await res.json();
+                        
+                        // Update local project with new Drive ID
+                        const updatedProject = { ...project, driveFileId: val.id };
+                        setCurrentProject(updatedProject);
+                        ProjectStorage.saveProject(updatedProject);
+                    }
+                    setSyncStatus('saved');
+                } catch (err) {
+                    console.error('Error saving to drive', err);
+                    setSyncStatus('unsaved');
+                }
+            };
 
             // Hugging Face Models List
             const HF_MODELS = [
@@ -2699,6 +2922,8 @@
                             githubModel={githubModel}
                             setGithubModel={setGithubModel}
                             GITHUB_MODELS={GITHUB_MODELS}
+                            isConnectedToDrive={isConnectedToDrive}
+                            onConnectDrive={handleConnectDrive}
                             onContentChange={(content) => saveChapterContent(content)}
                             onStatsUpdate={(w, c) => {
                                 setGlobalWordCount(w);
@@ -3099,20 +3324,54 @@
 
 
             // 5. INSIGHTS (STATS)
-            const renderStats = () => (
+            const renderStats = () => {
+                // Prepare Heatmap Data (Last 98 days)
+                const today = new Date();
+                const heatmapData = [];
+                for (let i = 97; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(today.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    const dayStats = stats[dateStr];
+                    heatmapData.push({
+                        date: dateStr,
+                        count: dayStats ? dayStats.netWords : 0
+                    });
+                }
+
+                // Prepare Goal Data (Last 7 days)
+                const goalData = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(today.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    const dayStats = stats[dateStr];
+                    goalData.push({
+                        date: dateStr,
+                        count: dayStats ? dayStats.netWords : 0,
+                        goal: dayStats ? (dayStats.goal || 500) : 500,
+                        isToday: i === 0
+                    });
+                }
+                
+                const todayStats = stats[today.toISOString().split('T')[0]];
+                const todayCount = todayStats ? todayStats.netWords : 0;
+                const todayGoal = todayStats ? (todayStats.goal || 500) : 500;
+
+                return (
                 <div className="flex-1 bg-[#0b0c0f] p-12 overflow-y-auto">
                 <header className="mb-10 flex justify-between items-end">
                     <div>
                         <h2 className="text-3xl font-bold text-white mb-2">Writer Analytics</h2>
-                        <p className="text-slate-500">Productivity & Linguistic Texture Analysis</p>
+                        <p className="text-slate-500">Productivity & Progress Tracking</p>
                     </div>
                     <div className="flex gap-2">
                         <div className="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 text-center">
                             <div className="text-xs text-slate-500 uppercase">Streak</div>
-                            <div className="font-bold text-emerald-400">12 Days</div>
+                            <div className="font-bold text-emerald-400">{streak} Days</div>
                         </div>
                         <div className="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 text-center">
-                            <div className="text-xs text-slate-500 uppercase">Words</div>
+                            <div className="text-xs text-slate-500 uppercase">Total Words</div>
                             <div className="font-bold text-blue-400">{globalWordCount}</div>
                         </div>
                     </div>
@@ -3121,59 +3380,66 @@
                 <div className="grid grid-cols-2 gap-8">
                     {/* Heatmap */}
                     <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Anchor className="w-4 h-4" /> Activity Heatmap (Year in Pixels)</h3>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Anchor className="w-4 h-4" /> Activity Heatmap (Last 3 Months)</h3>
                     <div className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1.5 h-auto">
-                        {Array.from({ length: 98 }).map((_, i) => (
+                        {heatmapData.map((day, i) => {
+                            let color = 'bg-slate-800/50';
+                            if (day.count > 0) color = 'bg-emerald-900';
+                            if (day.count > 500) color = 'bg-emerald-700';
+                            if (day.count > 1000) color = 'bg-emerald-500';
+                            if (day.count > 2000) color = 'bg-emerald-400';
+                            
+                            return (
                             <div 
                             key={i} 
-                            className={`aspect-square rounded-sm transition-all hover:scale-125 ${Math.random() > 0.7 ? 'bg-emerald-500' : Math.random() > 0.5 ? 'bg-emerald-900' : 'bg-slate-800/50'}`}
-                            title={`${Math.floor(Math.random() * 2000)} words`}
+                            className={`aspect-square rounded-sm transition-all hover:scale-125 ${color}`}
+                            title={`${day.date}: ${day.count} words`}
                             />
-                        ))}
+                        )})}
                     </div>
                     </div>
 
-                    {/* Burn Down */}
+                    {/* Goal Tracking */}
                     <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg relative overflow-hidden flex flex-col">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Target className="w-4 h-4" /> Adaptive Goal Tracking</h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Target className="w-4 h-4" /> Daily Goal Tracking</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500">Goal:</span>
+                            <input 
+                                type="number" 
+                                value={todayGoal} 
+                                onChange={(e) => {
+                                    const newGoal = e.target.value;
+                                    const newHistory = StatsStorage.setGoal(newGoal);
+                                    setStats(newHistory);
+                                }}
+                                className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                            />
+                        </div>
+                    </div>
                     <div className="flex items-end gap-3 flex-1 px-4 pb-4 border-b border-slate-800 mb-4">
-                        {[40, 60, 45, 80, 30, 90, 100].map((h, i) => (
-                            <div key={i} className="flex-1 bg-indigo-500/10 rounded-t relative group flex flex-col justify-end h-full">
-                            <div className="bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t w-full transition-all duration-1000 relative" style={{ height: `${h}%` }}>
-                                {i === 6 && <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-indigo-600 px-1.5 py-0.5 rounded">Today</div>}
+                        {goalData.map((day, i) => {
+                            const percent = Math.min((day.count / day.goal) * 100, 100);
+                            return (
+                            <div key={i} className="flex-1 bg-indigo-500/10 rounded-t relative group flex flex-col justify-end h-full" title={`${day.date}: ${day.count} / ${day.goal}`}>
+                            <div className={`rounded-t w-full transition-all duration-1000 relative ${day.count >= day.goal ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ height: `${Math.max(percent, 5)}%` }}>
+                                {day.isToday && <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-indigo-600 px-1.5 py-0.5 rounded">Today</div>}
                             </div>
                             </div>
-                        ))}
+                        )})}
                     </div>
-                    <p className="text-xs text-slate-500 text-center italic">"You are 5% ahead of schedule. Weekend 'Surge' goal activated."</p>
-                    </div>
-                    
-                    {/* Sentiment Analysis */}
-                    <div className="col-span-2 bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-lg">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-6">Linguistic Texture (Rhythm Analysis)</h3>
-                    <div className="h-12 w-full flex rounded-xl overflow-hidden opacity-90 mb-4">
-                        <div className="w-[10%] bg-emerald-500 flex items-center justify-center text-[10px] text-emerald-900 font-bold">Short</div>
-                        <div className="w-[20%] bg-amber-500 flex items-center justify-center text-[10px] text-amber-900 font-bold">Medium</div>
-                        <div className="w-[50%] bg-emerald-500 flex items-center justify-center text-[10px] text-emerald-900 font-bold">Short</div>
-                        <div className="w-[5%] bg-red-500 flex items-center justify-center text-[10px] text-white font-bold">!</div>
-                        <div className="w-[15%] bg-amber-500 flex items-center justify-center text-[10px] text-amber-900 font-bold">Medium</div>
-                    </div>
-                    <div className="flex gap-8">
-                        <div className="flex-1">
-                            <p className="text-sm text-slate-400">
-                                Visual representation of sentence length variation. High variation indicates dynamic flow.
-                            </p>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="flex items-center gap-2 text-xs text-emerald-400"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Punchy</div>
-                            <div className="flex items-center gap-2 text-xs text-amber-400"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Flowing</div>
-                            <div className="flex items-center gap-2 text-xs text-red-400"><div className="w-2 h-2 rounded-full bg-red-500"></div> Tedious</div>
+                    <div className="flex justify-between items-center">
+                        <p className="text-xs text-slate-500 italic">
+                            {todayCount >= todayGoal ? "Goal reached! Great job!" : `${todayGoal - todayCount} words to reach your daily goal.`}
+                        </p>
+                        <div className="text-xs font-bold text-white">
+                            {todayCount} / {todayGoal}
                         </div>
                     </div>
                     </div>
                 </div>
                 </div>
-            );
+            )};
 
             // -- MAIN LAYOUT COMPOSITION --
             
