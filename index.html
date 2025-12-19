@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NarrativeOS</title>
+    <title>Narrative - Creative Writing Platform</title>
     
     <!-- Favicon Links -->
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -12,23 +12,23 @@
     <link rel="manifest" href="site.webmanifest">
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="NarrativeOS - A powerful AI-assisted creative writing platform for novelists and storytellers. Build timelines, manage characters, track relationships, and craft your story with intelligent writing assistance.">
+    <meta name="description" content="Narrative - A powerful AI-assisted creative writing platform for novelists and storytellers. Build timelines, manage characters, track relationships, and craft your story with intelligent writing assistance.">
     <meta name="keywords" content="creative writing software, novel writing app, AI writing assistant, story planning tool, character development, timeline builder, narrative design, fiction writing, storytelling platform, writer tool, screenwriting software, book writing software, manuscript editor, plot structure tool, story arc planner, worldbuilding tool, writing productivity, author software, creative writing app, narrative structure, story organizer, writing assistant, plot development, character creator, relationship mapper, storyline, story beats, writing collaboration, cloud writing tool, novelist software, fantasy writing, sci-fi writing, romance writing, thriller writing, nanowrimo tool, writing project manager, story codex, writing dashboard, creative suite, author platform, manuscript management, chapter organizer, AI plot analysis, AI story suggestions, Gemini AI writing, automated plot structure, AI character analysis, intelligent story planning, AI-powered timeline, machine learning writing, AI beat suggestions, AI relationship mapping, GPT writing tool, AI narrative assistant, automated story development, AI story architect, neural writing assistant, smart writing platform, AI content generation, predictive story tools">
-    <meta name="author" content="Marco Jorgensen">
+    <meta name="author" content="Marco Jørgensen">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://narrativeos.com">
     
     <!-- Open Graph Meta Tags for Social Sharing -->
-    <meta property="og:title" content="NarrativeOS - AI-Powered Creative Writing Platform">
+    <meta property="og:title" content="Narrative - Creative Writing Platform">
     <meta property="og:description" content="Build your story with AI assistance. Manage characters, plot timelines, and track relationships in one comprehensive writing environment.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://narrativeos.com">
     <meta property="og:image" content="https://narrativeos.com/android-chrome-512x512.png">
-    <meta property="og:site_name" content="NarrativeOS">
+    <meta property="og:site_name" content="Narrative">
     
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="NarrativeOS - AI-Powered Creative Writing Platform">
+    <meta name="twitter:title" content="Narrative - Creative Writing Platform">
     <meta name="twitter:description" content="Build your story with AI assistance. Manage characters, plot timelines, and track relationships.">
     <meta name="twitter:image" content="https://narrativeos.com/android-chrome-512x512.png">
     
@@ -37,7 +37,7 @@
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "NarrativeOS",
+    "name": "Narrative - Creative Writing Platform",
       "applicationCategory": "CreativeWork",
       "operatingSystem": "Web Browser",
       "description": "AI-assisted creative writing platform for novelists featuring timeline building, character management, relationship tracking, and intelligent writing assistance.",
@@ -48,7 +48,7 @@
       },
       "author": {
         "@type": "Person",
-        "name": "Marco Jorgensen"
+        "name": "Marco Jørgensen"
       },
       "aggregateRating": {
         "@type": "AggregateRating",
@@ -390,6 +390,8 @@
         const API_KEY = 'AIzaSyCBwO7tdzYM7B8dJE0BfTz_2WzKNSBhKQg'; 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        const DRIVE_FOLDER_NAME = 'Narrative Projects';
+        const LEGACY_DRIVE_FOLDER_NAME = 'NarrativeOS Projects';
 
         // --- EDITOR COMPONENTS ---
 
@@ -982,7 +984,7 @@
                   )}
                   
                   <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-white/10 cursor-pointer hover:scale-105 transition-transform" title={userInfo ? `Signed in as ${userInfo.displayName} (${userInfo.emailAddress})` : 'Not signed in'}>
-                    {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : <img src="N.svg" alt="NarrativeOS" className="w-6 h-6" />}
+                    {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : <img src="N.svg" alt="Narrative" className="w-6 h-6" />}
                   </div>
                 </div>
               </div>
@@ -1554,7 +1556,7 @@
                     
                     <p className="text-gray-400 mb-8 leading-relaxed">
                       This application connects directly to <strong>your personal Google Drive</strong>. 
-                      Your work is saved to a folder named 'NarrativeOS Projects' in your own cloud storage.
+                      Your work is saved to a folder named 'Narrative Projects' in your own cloud storage.
                       <br/><br/>
                       <span className="text-xs text-gray-500">Privacy Note: No data is sent to any external servers. The app only has access to files it creates.</span>
                       <br/>
@@ -1580,7 +1582,7 @@
                          </div>
                          <p className="text-lg font-bold text-white">Sync Active</p>
                          {userInfo && <p className="text-sm text-emerald-300 mt-1">Connected as {userInfo.displayName}</p>}
-                         <p className="text-sm text-gray-400 mt-1">Folder: NarrativeOS Projects</p>
+                         <p className="text-sm text-gray-400 mt-1">Folder: Narrative Projects</p>
                          <button 
                            onClick={() => { 
                                setIsConnectedToDrive(false); 
@@ -1644,6 +1646,47 @@
             
             const characters = currentProject.characters || [];
             const hasCharacters = characters.length > 0;
+            const [relationshipViewMode, setRelationshipViewMode] = useState('analysis'); // 'analysis' | 'chapters'
+            const [selectedCharacter, setSelectedCharacter] = useState(null); // name string
+
+            // Build chapter-based timeline view from AI timeline data
+            const chapterTimeline = useMemo(() => {
+                if (!currentProject || relationshipTimeline.length === 0) return [];
+                const chapters = currentProject.sections.flatMap(s => s.chapters);
+                return chapters.map((ch, idx) => {
+                    const rels = [];
+                    relationshipTimeline.forEach(step => {
+                        (step.relationships || []).forEach(r => {
+                            const match = r.chapterId === ch.id || r.chapter === ch.title || r.chapterTitle === ch.title;
+                            if (match) rels.push(r);
+                        });
+                    });
+                    return {
+                        label: `Chapter ${idx + 1}: ${ch.title}`,
+                        description: rels.length > 0 ? `Relationships appearing in ${ch.title}` : 'No relationships found for this chapter.',
+                        relationships: rels
+                    };
+                });
+            }, [currentProject, relationshipTimeline]);
+
+            const activeTimeline = relationshipViewMode === 'chapters' ? chapterTimeline : relationshipTimeline;
+
+            // Keep timeline index in range and update relationships when mode changes
+            useEffect(() => {
+                if (activeTimeline.length === 0) {
+                    setTimelineIndex(0);
+                    setRelationships([]);
+                    return;
+                }
+                const clamped = Math.min(timelineIndex, activeTimeline.length - 1);
+                if (clamped !== timelineIndex) setTimelineIndex(clamped);
+                setRelationships(activeTimeline[clamped].relationships || []);
+            }, [relationshipViewMode, activeTimeline.length]);
+
+            const characterRelationships = useMemo(() => {
+                if (!selectedCharacter) return relationships;
+                return relationships.filter(r => r.source === selectedCharacter || r.target === selectedCharacter);
+            }, [relationships, selectedCharacter]);
 
             // --- Force Directed Graph Logic ---
             const [nodes, setNodes] = useState([]);
@@ -1827,26 +1870,97 @@
 
                 {/* Timeline & Editor Controls */}
                 <div className="absolute bottom-8 left-8 z-10 flex flex-col gap-4">
-                    {relationshipTimeline.length > 1 && (
-                        <div className="bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-800 shadow-xl w-[400px]">
+                    {hasCharacters && (
+                        <div className="bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-800 shadow-xl w-[420px]">
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase">Character Viewer</p>
+                                    <p className="text-[11px] text-slate-500">See relationships for a single character</p>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedCharacter(null)}
+                                    className={`text-[10px] px-2 py-1 rounded-full border ${selectedCharacter ? 'border-slate-700 text-slate-300 hover:border-slate-500' : 'border-emerald-500 text-emerald-200 bg-emerald-500/10'}`}
+                                    title="Show all characters"
+                                >
+                                    All
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto scrollbar-thin pr-1">
+                                {characters.map((ch) => (
+                                    <button
+                                        key={ch.id}
+                                        onClick={() => setSelectedCharacter(ch.name)}
+                                        className={`w-full text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${selectedCharacter === ch.name ? 'border-indigo-500 bg-indigo-500/10 text-indigo-100' : 'border-slate-700 bg-slate-800/60 text-slate-200 hover:border-slate-600'}`}
+                                        title={ch.name}
+                                    >
+                                        {ch.name || 'Unnamed'}
+                                    </button>
+                                ))}
+                                {characters.length === 0 && (
+                                    <div className="text-xs text-slate-500">No characters yet.</div>
+                                )}
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-slate-800">
+                                <div className="text-[11px] text-slate-400 mb-2">Relationships {selectedCharacter ? `for ${selectedCharacter}` : '(all)'} — {characterRelationships.length}</div>
+                                {characterRelationships.length === 0 ? (
+                                    <div className="text-xs text-slate-500">No relationships found.</div>
+                                ) : (
+                                    <div className="space-y-2 max-h-32 overflow-y-auto pr-1 scrollbar-thin">
+                                        {characterRelationships.slice(0, 12).map((r, idx) => (
+                                            <div key={idx} className="text-[11px] text-slate-200/90 bg-slate-800/60 border border-slate-700/70 rounded-md px-2 py-1 leading-tight">
+                                                <div className="font-semibold">{r.source} → {r.target}</div>
+                                                <div className="text-[10px] text-slate-400">{r.type || 'relation'}{r.strength ? ` • strength ${r.strength}` : ''}</div>
+                                                {r.chapterTitle && <div className="text-[10px] text-slate-500">{r.chapterTitle}</div>}
+                                            </div>
+                                        ))}
+                                        {characterRelationships.length > 12 && (
+                                            <div className="text-[10px] text-slate-500">+ {characterRelationships.length - 12} more…</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTimeline.length > 0 && (
+                        <div className="bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-800 shadow-xl w-[420px]">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
+                                    <span className="px-2 py-1 rounded-full bg-slate-800 text-slate-200">{relationshipViewMode === 'chapters' ? 'Chapters' : 'AI Timeline'}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setRelationshipViewMode('analysis')}
+                                        className={`text-[10px] px-2 py-1 rounded-full border ${relationshipViewMode === 'analysis' ? 'border-indigo-500 text-indigo-200 bg-indigo-500/10' : 'border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                                    >
+                                        AI Timeline
+                                    </button>
+                                    <button
+                                        onClick={() => setRelationshipViewMode('chapters')}
+                                        className={`text-[10px] px-2 py-1 rounded-full border ${relationshipViewMode === 'chapters' ? 'border-emerald-500 text-emerald-200 bg-emerald-500/10' : 'border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                                    >
+                                        By Chapter
+                                    </button>
+                                </div>
+                            </div>
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-slate-400 uppercase">Timeline</span>
-                                <span className="text-xs text-indigo-400 font-bold">{relationshipTimeline[timelineIndex].label}</span>
+                                <span className="text-xs text-indigo-400 font-bold truncate max-w-[260px]">{activeTimeline[timelineIndex]?.label || 'No data'}</span>
+                                <span className="text-[10px] text-slate-500">{timelineIndex + 1}/{activeTimeline.length}</span>
                             </div>
                             <input 
                                 type="range" 
                                 min="0" 
-                                max={relationshipTimeline.length - 1} 
-                                value={timelineIndex} 
+                                max={Math.max(0, activeTimeline.length - 1)} 
+                                value={Math.min(timelineIndex, Math.max(0, activeTimeline.length - 1))} 
                                 onChange={(e) => {
                                     const idx = parseInt(e.target.value);
                                     setTimelineIndex(idx);
-                                    setRelationships(relationshipTimeline[idx].relationships);
+                                    setRelationships(activeTimeline[idx]?.relationships || []);
                                 }}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                             />
-                            <p className="text-xs text-slate-300 mt-2 italic">
-                                "{relationshipTimeline[timelineIndex].description}"
+                            <p className="text-xs text-slate-300 mt-2 italic min-h-[32px]">
+                                "{activeTimeline[timelineIndex]?.description || 'No description available.'}"
                             </p>
                             <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-800">
                                 <button 
@@ -1854,9 +1968,9 @@
                                         const allRels = [];
                                         const seen = new Set();
                                         // Iterate backwards to prioritize latest relationships
-                                        [...relationshipTimeline].reverse().forEach(step => {
-                                            step.relationships.forEach(r => {
-                                                const key = `${r.source}-${r.target}`;
+                                        [...activeTimeline].reverse().forEach(step => {
+                                            (step.relationships || []).forEach(r => {
+                                                const key = `${r.source}-${r.target}-${r.type || ''}`;
                                                 if (!seen.has(key)) {
                                                     seen.add(key);
                                                     allRels.push(r);
@@ -1869,6 +1983,7 @@
                                 >
                                     <Maximize2 className="w-3 h-3" /> Show All Relationships
                                 </button>
+                                <span className="text-[10px] text-slate-500">{(activeTimeline[timelineIndex]?.relationships || []).length} link(s)</span>
                             </div>
                         </div>
                     )}
@@ -2280,17 +2395,18 @@
                 try {
                     // Check if folder exists
                     const response = await gapi.client.drive.files.list({
-                        q: "mimeType='application/vnd.google-apps.folder' and name='NarrativeOS Projects' and trashed=false",
+                        q: "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='" + DRIVE_FOLDER_NAME + "' or name='" + LEGACY_DRIVE_FOLDER_NAME + "')",
                         fields: 'files(id, name)',
                     });
                     
                     let folderId;
                     if (response.result.files && response.result.files.length > 0) {
-                        folderId = response.result.files[0].id;
+                        const targetFolder = response.result.files.find(f => f.name === DRIVE_FOLDER_NAME) || response.result.files[0];
+                        folderId = targetFolder.id;
                     } else {
-                        // Create folder
+                        // Create folder with new branding
                         const fileMetadata = {
-                            'name': 'NarrativeOS Projects',
+                            'name': DRIVE_FOLDER_NAME,
                             'mimeType': 'application/vnd.google-apps.folder'
                         };
                         const createResponse = await gapi.client.drive.files.create({
@@ -2767,12 +2883,14 @@
                               setRelationshipTimeline(parsedData.timeline);
                               setTimelineIndex(parsedData.timeline.length - 1); // Start at the end
                               setRelationships(parsedData.timeline[parsedData.timeline.length - 1].relationships);
+                              setRelationshipViewMode('analysis');
                           } else if (Array.isArray(parsedData)) {
                               // Fallback for old format (just array of relationships)
                               const fallbackTimeline = [{ label: "Current State", description: "Analysis of current text", relationships: parsedData }];
                               setRelationshipTimeline(fallbackTimeline);
                               setTimelineIndex(0);
                               setRelationships(parsedData);
+                              setRelationshipViewMode('analysis');
                           } else {
                               console.error("Unexpected JSON format", parsedData);
                           }
@@ -3776,16 +3894,16 @@
                         <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 relative min-w-full bg-[#13151a]">
                             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
                             
-                            <div className="flex flex-col gap-6 min-w-[1200px] relative z-10">
-                                <div className="flex pl-24 relative">
+                            <div className="flex flex-col gap-6 relative z-10" style={{ minWidth: `${Math.max(10, totalChapters) * 12}rem` }}>
+                                <div className="flex pl-24 relative" style={{ minWidth: `${Math.max(10, totalChapters) * 12}rem` }}>
                                     {currentProject.sections.flatMap(s => s.chapters).map((chapter, idx) => (
-                                        <div key={chapter.id} className="absolute text-xs font-medium text-slate-500 mb-2 border-b border-slate-800 pb-2 truncate" title={chapter.title} style={{ left: `${idx * 12}rem`, width: '11rem' }}>
+                                        <div key={chapter.id} className="absolute text-xs font-medium text-slate-500 mb-2 border-b border-slate-800 pb-2 truncate" title={chapter.title} style={{ left: `${idx * 12}rem`, width: '12rem' }}>
                                             {idx + 1}. {chapter.title}
                                         </div>
                                     ))}
                                     {/* Add placeholder columns if needed */}
                                     {Array.from({ length: Math.max(0, 10 - totalChapters) }).map((_, idx) => (
-                                        <div key={`placeholder-${idx}`} className="absolute text-xs text-slate-700 mb-2 border-b border-slate-800 pb-2" style={{ left: `${(totalChapters + idx) * 12}rem`, width: '11rem' }}>—</div>
+                                        <div key={`placeholder-${idx}`} className="absolute text-xs text-slate-700 mb-2 border-b border-slate-800 pb-2" style={{ left: `${(totalChapters + idx) * 12}rem`, width: '12rem' }}>—</div>
                                     ))}
                                     {/* Spacer to maintain layout height */}
                                     <div className="h-6 w-full"></div>
@@ -3811,7 +3929,7 @@
                                                             setShowBeatEditor(true);
                                                         }}
                                                         className={`absolute top-2 bottom-2 rounded-md p-3 ${beat.color || 'bg-blue-500'} shadow-lg cursor-pointer hover:brightness-110 flex flex-col justify-between border-t border-white/10 transition-all`}
-                                                        style={{ left: `${(beat.start - 1) * 12}rem`, width: `${beat.duration * 11}rem` }}
+                                                        style={{ left: `${(beat.start - 1) * 12}rem`, width: `${beat.duration * 12}rem` }}
                                                         title={beat.description || beat.title}
                                                     >
                                                         <div className="flex items-start justify-between">
@@ -3965,19 +4083,25 @@
                             
                             {/* Beat markers with hover labels */}
                             {timeline.map((beat, i) => {
-                                const x = (beat.start / Math.max(10, totalChapters)) * 1000;
-                                const y = 250 - (beat.intensity || 5) * 25;
-                                return (
-                                    <g key={beat.id} className="group cursor-pointer">
-                                        <circle cx={x} cy={y} r="5" fill="#6366f1" stroke="white" strokeWidth="2" className="transition-all group-hover:r-7" />
-                                        {/* Hover label with glassmorphism background */}
-                                        <foreignObject x={x - 60} y={y - 40} width="120" height="30" className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                            <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-lg px-3 py-1.5 shadow-xl">
-                                                <div className="text-xs font-bold text-white text-center truncate">{beat.title}</div>
-                                            </div>
-                                        </foreignObject>
-                                    </g>
-                                );
+                                    const x = (beat.start / Math.max(10, totalChapters)) * 1000;
+                                    const y = 250 - (beat.intensity || 5) * 25;
+                                    const labelWidth = 240;
+                                    const labelHeight = 60;
+                                    const clampedX = Math.min(Math.max(x, labelWidth / 2), 1000 - labelWidth / 2);
+                                    return (
+                                        <g key={beat.id} className="group cursor-pointer">
+                                            <circle cx={x} cy={y} r="5" fill="#6366f1" stroke="white" strokeWidth="2" className="transition-all group-hover:r-7" />
+                                            {/* Hover label with glassmorphism background */}
+                                            <foreignObject x={clampedX - labelWidth / 2} y={y - labelHeight - 12} width={labelWidth} height={labelHeight} className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                <div className="bg-slate-900/85 backdrop-blur-md border border-slate-700/50 rounded-lg px-3 py-2 shadow-xl text-left">
+                                                    <div className="text-xs font-bold text-white mb-1 leading-tight line-clamp-2" title={beat.title}>{beat.title}</div>
+                                                    {beat.description && (
+                                                        <div className="text-[11px] text-slate-200/90 leading-tight line-clamp-2" title={beat.description}>{beat.description}</div>
+                                                    )}
+                                                </div>
+                                            </foreignObject>
+                                        </g>
+                                    );
                             })}
                             
                             {/* Suggested beats curve (dashed) */}
@@ -3995,12 +4119,18 @@
                                     {suggestedBeats.map((beat, i) => {
                                         const x = (beat.start / Math.max(10, totalChapters + suggestedBeats.length)) * 1000;
                                         const y = 250 - (beat.intensity || 5) * 25;
+                                        const labelWidth = 240;
+                                        const labelHeight = 60;
+                                        const clampedX = Math.min(Math.max(x, labelWidth / 2), 1000 - labelWidth / 2);
                                         return (
                                             <g key={beat.id} className="group cursor-pointer">
                                                 <circle cx={x} cy={y} r="4" fill="#a855f7" stroke="white" strokeWidth="1.5" opacity="0.7" className="transition-all group-hover:r-6" />
-                                                <foreignObject x={x - 60} y={y - 40} width="120" height="30" className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                                    <div className="bg-purple-900/80 backdrop-blur-md border border-purple-700/50 rounded-lg px-3 py-1.5 shadow-xl">
-                                                        <div className="text-xs font-bold text-white text-center truncate italic">AI: {beat.title}</div>
+                                                <foreignObject x={clampedX - labelWidth / 2} y={y - labelHeight - 12} width={labelWidth} height={labelHeight} className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                    <div className="bg-purple-900/85 backdrop-blur-md border border-purple-700/50 rounded-lg px-3 py-2 shadow-xl text-left">
+                                                        <div className="text-xs font-bold text-white mb-1 leading-tight line-clamp-2" title={beat.title}>AI: {beat.title}</div>
+                                                        {beat.description && (
+                                                            <div className="text-[11px] text-purple-100/90 leading-tight line-clamp-2" title={beat.description}>{beat.description}</div>
+                                                        )}
                                                     </div>
                                                 </foreignObject>
                                             </g>

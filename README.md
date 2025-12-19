@@ -1,4 +1,4 @@
-# NarrativeOS
+# Narrative - Creative Writing Platform
 
 A distraction-free, browser-based creative writing environment with AI assistance and Google Drive sync.
 
@@ -11,7 +11,7 @@ A distraction-free, browser-based creative writing environment with AI assistanc
 
 ## How to Enable AI Features (Free)
 
-NarrativeOS uses Google's Gemini API, which offers a generous free tier. You need your own API key to use the AI features.
+Narrative uses Google's Gemini API, which offers a generous free tier. You need your own API key to use the AI features.
 
 1. **Go to Google AI Studio**
    Visit [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
@@ -27,8 +27,8 @@ NarrativeOS uses Google's Gemini API, which offers a generous free tier. You nee
 4. **Copy the Key**
    - Copy the generated string (it starts with `AIza...`).
 
-5. **Activate in NarrativeOS**
-   - Open NarrativeOS.
+5. **Activate in Narrative**
+   - Open Narrative.
    - Click the **AI Icon** (Lightning bolt) in the bottom right corner.
    - In the input field at the bottom of the panel, paste your API key when prompted.
    - The key is saved locally in your browser, so you only need to do this once.
