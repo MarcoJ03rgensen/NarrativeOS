@@ -2230,6 +2230,9 @@
             useEffect(() => {
                 if (!currentProject || !isConnectedToDrive || !driveFolderId) return;
 
+                // Set status to syncing immediately when project changes
+                setSyncStatus('syncing');
+
                 const timeoutId = setTimeout(() => {
                     saveToDrive(currentProject);
                 }, 2000); // Debounce 2s
@@ -2444,8 +2447,8 @@
                 
                 const token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    // Token expired or missing - skip save silently
-                    // User will need to re-authenticate manually
+                    // Token expired or missing - reset status if it was syncing
+                    if (syncStatus === 'syncing') setSyncStatus('saved');
                     return;
                 }
                 
@@ -3746,16 +3749,18 @@
                             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
                             
                             <div className="flex flex-col gap-6 min-w-[1200px] relative z-10">
-                                <div className="flex pl-24">
+                                <div className="flex pl-24 relative">
                                     {currentProject.sections.flatMap(s => s.chapters).map((chapter, idx) => (
-                                        <div key={chapter.id} className="w-48 text-xs font-medium text-slate-500 mb-2 border-b border-slate-800 pb-2 truncate" title={chapter.title}>
-                                            {chapter.title}
+                                        <div key={chapter.id} className="absolute text-xs font-medium text-slate-500 mb-2 border-b border-slate-800 pb-2 truncate" title={chapter.title} style={{ left: `${idx * 12}rem`, width: '11rem' }}>
+                                            {idx + 1}. {chapter.title}
                                         </div>
                                     ))}
                                     {/* Add placeholder columns if needed */}
                                     {Array.from({ length: Math.max(0, 10 - totalChapters) }).map((_, idx) => (
-                                        <div key={`placeholder-${idx}`} className="w-48 text-xs text-slate-700 mb-2 border-b border-slate-800 pb-2">—</div>
+                                        <div key={`placeholder-${idx}`} className="absolute text-xs text-slate-700 mb-2 border-b border-slate-800 pb-2" style={{ left: `${(totalChapters + idx) * 12}rem`, width: '11rem' }}>—</div>
                                     ))}
+                                    {/* Spacer to maintain layout height */}
+                                    <div className="h-6 w-full"></div>
                                 </div>
 
                                 {/* Render lanes dynamically */}
@@ -3840,75 +3845,136 @@
                         </div>
                     )}
 
-                    <div className="h-40 bg-[#0f1116] border-t border-slate-800 p-4 relative">
-                        <div className="absolute top-2 left-4 text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Tension Curve
+                    <div className="h-80 bg-[#0f1116] border-t border-slate-800 p-4 relative">
+                        <div className="absolute top-2 left-4 text-[10px] font-bold text-slate-500 uppercase flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Tension
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Pacing
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span> Emotion
+                            </div>
                         </div>
-                        <svg className="w-full h-full pt-4" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                        <svg className="w-full h-full pt-4" viewBox="0 0 1000 250" preserveAspectRatio="none">
                             <defs>
                                 <linearGradient id="gradientTension" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
+                                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
                                     <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
                                 </linearGradient>
-                                <linearGradient id="gradientSuggestion" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" stopColor="#a855f7" stopOpacity="0.3" />
-                                    <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+                                <linearGradient id="gradientPacing" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                                 </linearGradient>
+                                <linearGradient id="gradientEmotion" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
+                                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                                </linearGradient>
+                                <filter id="glow">
+                                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
                             </defs>
                             {/* Grid lines */}
-                            <line x1="0" y1="25" x2="1000" y2="25" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
-                            <line x1="0" y1="50" x2="1000" y2="50" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                            <line x1="0" y1="75" x2="1000" y2="75" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                            <line x1="0" y1="62.5" x2="1000" y2="62.5" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
+                            <line x1="0" y1="125" x2="1000" y2="125" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
+                            <line x1="0" y1="187.5" x2="1000" y2="187.5" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.3" />
                             
-                            {/* Actual beats curve */}
+                            {/* Tension curve (Intensity) */}
                             {timeline.length > 0 && (
                                 <>
                                     <path 
-                                        d={`M0,${100 - (timeline[0]?.intensity || 5) * 10} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${100 - (b.intensity || 5) * 10}`).join(' ')}`}
+                                        d={`M0,${250 - (timeline[0]?.intensity || 5) * 25} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - (b.intensity || 5) * 25}`).join(' ')}`}
                                         fill="none" 
                                         stroke="#6366f1" 
                                         strokeWidth="3" 
+                                        filter="url(#glow)"
                                     />
                                     <path 
-                                        d={`M0,${100 - (timeline[0]?.intensity || 5) * 10} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${100 - (b.intensity || 5) * 10}`).join(' ')} L1000,100 L0,100 Z`}
+                                        d={`M0,${250 - (timeline[0]?.intensity || 5) * 25} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - (b.intensity || 5) * 25}`).join(' ')} L1000,250 L0,250 Z`}
                                         fill="url(#gradientTension)" 
                                     />
-                                    {/* Beat markers and labels */}
-                                    {timeline.map((beat, i) => {
-                                        const x = (beat.start / Math.max(10, totalChapters)) * 1000;
-                                        const y = 100 - (beat.intensity || 5) * 10;
-                                        return (
-                                            <g key={beat.id}>
-                                                <circle cx={x} cy={y} r="4" fill="#6366f1" stroke="white" strokeWidth="2" />
-                                                <text x={x} y={y - 8} fill="#94a3b8" fontSize="8" textAnchor="middle" className="font-bold">
-                                                    {beat.title.length > 15 ? beat.title.substring(0, 12) + '...' : beat.title}
-                                                </text>
-                                            </g>
-                                        );
-                                    })}
                                 </>
                             )}
+                            
+                            {/* Pacing curve (Duration inverse - shorter beats = faster pacing) */}
+                            {timeline.length > 0 && (
+                                <>
+                                    <path 
+                                        d={`M0,${250 - (10 / (timeline[0]?.duration || 2)) * 25} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - (10 / (b.duration || 2)) * 25}`).join(' ')}`}
+                                        fill="none" 
+                                        stroke="#10b981" 
+                                        strokeWidth="2" 
+                                        opacity="0.7"
+                                    />
+                                    <path 
+                                        d={`M0,${250 - (10 / (timeline[0]?.duration || 2)) * 25} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - (10 / (b.duration || 2)) * 25}`).join(' ')} L1000,250 L0,250 Z`}
+                                        fill="url(#gradientPacing)" 
+                                    />
+                                </>
+                            )}
+                            
+                            {/* Emotional Impact curve (using intensity with different calculation) */}
+                            {timeline.length > 0 && (
+                                <>
+                                    <path 
+                                        d={`M0,${250 - ((timeline[0]?.intensity || 5) * (timeline[0]?.duration || 2) / 2) * 15} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - ((b.intensity || 5) * (b.duration || 2) / 2) * 15}`).join(' ')}`}
+                                        fill="none" 
+                                        stroke="#f59e0b" 
+                                        strokeWidth="2" 
+                                        opacity="0.6"
+                                    />
+                                    <path 
+                                        d={`M0,${250 - ((timeline[0]?.intensity || 5) * (timeline[0]?.duration || 2) / 2) * 15} ${timeline.map((b, i) => `L${(b.start / Math.max(10, totalChapters)) * 1000},${250 - ((b.intensity || 5) * (b.duration || 2) / 2) * 15}`).join(' ')} L1000,250 L0,250 Z`}
+                                        fill="url(#gradientEmotion)" 
+                                    />
+                                </>
+                            )}
+                            
+                            {/* Beat markers with hover labels */}
+                            {timeline.map((beat, i) => {
+                                const x = (beat.start / Math.max(10, totalChapters)) * 1000;
+                                const y = 250 - (beat.intensity || 5) * 25;
+                                return (
+                                    <g key={beat.id} className="group cursor-pointer">
+                                        <circle cx={x} cy={y} r="5" fill="#6366f1" stroke="white" strokeWidth="2" className="transition-all group-hover:r-7" />
+                                        {/* Hover label with glassmorphism background */}
+                                        <foreignObject x={x - 60} y={y - 40} width="120" height="30" className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                            <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-lg px-3 py-1.5 shadow-xl">
+                                                <div className="text-xs font-bold text-white text-center truncate">{beat.title}</div>
+                                            </div>
+                                        </foreignObject>
+                                    </g>
+                                );
+                            })}
+                            
                             {/* Suggested beats curve (dashed) */}
                             {suggestedBeats.length > 0 && (
                                 <>
                                     <path 
-                                        d={`${suggestedBeats.map((b, i) => `${i === 0 ? 'M' : 'L'}${(b.start / Math.max(10, totalChapters + suggestedBeats.length)) * 1000},${100 - (b.intensity || 5) * 10}`).join(' ')}`}
+                                        d={`${suggestedBeats.map((b, i) => `${i === 0 ? 'M' : 'L'}${(b.start / Math.max(10, totalChapters + suggestedBeats.length)) * 1000},${250 - (b.intensity || 5) * 25}`).join(' ')}`}
                                         fill="none" 
                                         stroke="#a855f7" 
                                         strokeWidth="2" 
                                         strokeDasharray="5 5"
-                                        opacity="0.6"
+                                        opacity="0.5"
                                     />
                                     {/* Suggestion markers */}
                                     {suggestedBeats.map((beat, i) => {
                                         const x = (beat.start / Math.max(10, totalChapters + suggestedBeats.length)) * 1000;
-                                        const y = 100 - (beat.intensity || 5) * 10;
+                                        const y = 250 - (beat.intensity || 5) * 25;
                                         return (
-                                            <g key={beat.id}>
-                                                <circle cx={x} cy={y} r="3" fill="#a855f7" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                                                <text x={x} y={y - 6} fill="#a78bfa" fontSize="7" textAnchor="middle" className="italic">
-                                                    {beat.title.length > 12 ? beat.title.substring(0, 10) + '...' : beat.title}
-                                                </text>
+                                            <g key={beat.id} className="group cursor-pointer">
+                                                <circle cx={x} cy={y} r="4" fill="#a855f7" stroke="white" strokeWidth="1.5" opacity="0.7" className="transition-all group-hover:r-6" />
+                                                <foreignObject x={x - 60} y={y - 40} width="120" height="30" className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                    <div className="bg-purple-900/80 backdrop-blur-md border border-purple-700/50 rounded-lg px-3 py-1.5 shadow-xl">
+                                                        <div className="text-xs font-bold text-white text-center truncate italic">AI: {beat.title}</div>
+                                                    </div>
+                                                </foreignObject>
                                             </g>
                                         );
                                     })}
