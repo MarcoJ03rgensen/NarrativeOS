@@ -2421,6 +2421,13 @@
                         });
                         const val = await res.json();
                         
+                        if (!val.id) {
+                            console.error('Drive upload failed - no file ID returned:', val);
+                            continue;
+                        }
+                        
+                        console.log(`Project "${project.name}" uploaded to Drive with ID: ${val.id}`);
+                        
                         // Update project with new Drive ID
                         updatedProjects[i] = { ...project, driveFileId: val.id };
                         hasChanges = true;
@@ -2433,7 +2440,10 @@
                         // If current project was updated, refresh it
                         if (currentProject) {
                             const updatedCurrent = updatedProjects.find(p => p.id === currentProject.id);
-                            if (updatedCurrent) setCurrentProject(updatedCurrent);
+                            if (updatedCurrent) {
+                                console.log('Updating current project with Drive ID:', updatedCurrent.driveFileId);
+                                setCurrentProject(updatedCurrent);
+                            }
                         }
                     }
                 } catch (err) {
@@ -2496,10 +2506,21 @@
                         });
                         const val = await res.json();
                         
+                        if (!val.id) {
+                            console.error('Drive upload failed - no file ID returned:', val);
+                            setSyncStatus('unsaved');
+                            return;
+                        }
+                        
+                        console.log(`New project uploaded to Drive with ID: ${val.id}`);
+                        
                         // Update local project with new Drive ID
                         const updatedProject = { ...project, driveFileId: val.id };
                         setCurrentProject(updatedProject);
                         ProjectStorage.saveProject(updatedProject);
+                        
+                        // Also update in projects array
+                        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
                     }
                     setSyncStatus('saved');
                 } catch (err) {
