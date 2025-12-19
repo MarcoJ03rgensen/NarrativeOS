@@ -2447,6 +2447,7 @@
             const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
             const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
             const [isDriveLoading, setIsDriveLoading] = useState(false);
+            const silentAuthAttempted = useRef(false);
             const [userInfo, setUserInfo] = useState(() => {
                 const stored = localStorage.getItem('narrativeos-user-info');
                 return stored ? JSON.parse(stored) : null;
@@ -2527,10 +2528,13 @@
 
             // Silent re-auth if user was previously connected (reduces prompts)
             useEffect(() => {
+                if (silentAuthAttempted.current) return; // Only attempt once
                 const hasConnectedBefore = localStorage.getItem('narrativeos-connected') === 'true';
                 if (!gapiInited || !gisInited || !tokenClient) return;
                 if (!hasConnectedBefore) return;
                 if (gapi.client.getToken()) return; // already have token
+
+                silentAuthAttempted.current = true; // Mark as attempted
 
                 // Try silent token refresh ONCE on mount
                 const attemptSilentAuth = async () => {
@@ -2575,7 +2579,7 @@
                 };
                 
                 attemptSilentAuth();
-            }, [gapiInited, gisInited, tokenClient]);
+            }, [gapiInited, gisInited, tokenClient, driveFolderId]);
 
             const handleConnectDrive = async () => {
                 if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
