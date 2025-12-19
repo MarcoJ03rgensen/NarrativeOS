@@ -901,6 +901,25 @@
               </div>
               )}
 
+              {/* --- Reconnection Banner --- */}
+              {!isConnectedToDrive && !focusMode && (
+              <div className="bg-amber-500/10 border-b border-amber-500/30 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top">
+                <div className="flex items-center gap-3">
+                  <CloudOff className="w-5 h-5 text-amber-400" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-200">Not connected to Google Drive</p>
+                    <p className="text-xs text-amber-300/80">Your projects are saved locally. Connect to backup to the cloud.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={onConnectDrive}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition-colors flex-shrink-0"
+                >
+                  Reconnect Now
+                </button>
+              </div>
+              )}
+
               {/* --- Glassy Toolbar --- */}
               {!focusMode && (
               <div className="flex items-center px-6 py-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto gap-2 shadow-sm z-10 no-scrollbar">
@@ -2268,25 +2287,10 @@
             const syncToDrive = async (folderId) => {
                 // Push all local projects to Drive (for protecting existing projects on first connection)
                 try {
-                    let token = gapi.client.getToken();
+                    const token = gapi.client.getToken();
                     if (!token || !token.access_token) {
-                        // Token missing - try to refresh
-                        try {
-                            if (tokenClient) {
-                                await new Promise((resolve) => {
-                                    tokenClient.callback = () => resolve();
-                                    tokenClient.requestAccessToken({prompt: ''});
-                                });
-                                token = gapi.client.getToken();
-                            }
-                        } catch (err) {
-                            console.warn('Failed to refresh token for Drive sync:', err);
-                            return;
-                        }
-                    }
-                    
-                    if (!token || !token.access_token) {
-                        console.warn('No valid access token for Drive sync');
+                        // Token missing - skip sync silently
+                        // User will need to re-authenticate manually
                         return;
                     }
                     
@@ -2329,27 +2333,11 @@
                 if (!driveFolderId) return;
                 if (!isConnectedToDrive) return; // Skip if not connected
                 
-                let token = gapi.client.getToken();
+                const token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    // Token expired or missing - try to refresh
-                    try {
-                        if (tokenClient) {
-                            await new Promise((resolve) => {
-                                tokenClient.callback = () => resolve();
-                                tokenClient.requestAccessToken({prompt: ''});
-                            });
-                            token = gapi.client.getToken();
-                        }
-                    } catch (err) {
-                        console.warn('Failed to refresh token, skipping Drive save:', err);
-                        // Don't set unsaved status - just skip this save attempt
-                        return;
-                    }
-                    
-                    if (!token || !token.access_token) {
-                        console.warn('No valid access token for Drive save after refresh attempt');
-                        return;
-                    }
+                    // Token expired or missing - skip save silently
+                    // User will need to re-authenticate manually
+                    return;
                 }
                 
                 setSyncStatus('syncing');
