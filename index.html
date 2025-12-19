@@ -2447,7 +2447,6 @@
             const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
             const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
             const [isDriveLoading, setIsDriveLoading] = useState(false);
-            const silentAuthAttempted = useRef(false);
             const [userInfo, setUserInfo] = useState(() => {
                 const stored = localStorage.getItem('narrativeos-user-info');
                 return stored ? JSON.parse(stored) : null;
@@ -2526,60 +2525,21 @@
                 return () => clearTimeout(timeoutId);
             }, [currentProject, isConnectedToDrive, driveFolderId]);
 
-            // Silent re-auth if user was previously connected (reduces prompts)
+            // Check for existing valid token on mount (no popup, just check)
             useEffect(() => {
-                if (silentAuthAttempted.current) return; // Only attempt once
-                const hasConnectedBefore = localStorage.getItem('narrativeos-connected') === 'true';
-                if (!gapiInited || !gisInited || !tokenClient) return;
-                if (!hasConnectedBefore) return;
-                if (gapi.client.getToken()) return; // already have token
-
-                silentAuthAttempted.current = true; // Mark as attempted
-
-                // Try silent token refresh ONCE on mount
-                const attemptSilentAuth = async () => {
-                    try {
-                        setIsDriveLoading(true);
-                        await Promise.race([
-                            new Promise((resolve, reject) => {
-                                tokenClient.callback = async (resp) => {
-                                    if (resp && resp.error) {
-                                        reject(resp.error);
-                                        return;
-                                    }
-                                    setIsConnectedToDrive(true);
-                                    localStorage.setItem('narrativeos-connected', 'true');
-                                    // If folder is known, sync; otherwise ensure folder
-                                    if (driveFolderId) {
-                                        try {
-                                            await syncFromDrive(driveFolderId);
-                                        } catch (e) {
-                                            console.warn('Silent syncFromDrive failed', e);
-                                        }
-                                    } else {
-                                        await ensureProjectFolder();
-                                    }
-                                    resolve();
-                                };
-                                try {
-                                    tokenClient.requestAccessToken({ prompt: 'none' });
-                                } catch (err) {
-                                    reject(err);
-                                }
-                            }),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
-                        ]);
-                    } catch (e) {
-                        console.warn('Silent token request failed - user will need to reconnect manually', e);
-                        setIsConnectedToDrive(false);
-                        localStorage.removeItem('narrativeos-connected');
-                    } finally {
-                        setIsDriveLoading(false);
-                    }
-                };
+                if (!gapiInited || !gisInited) return;
                 
-                attemptSilentAuth();
-            }, [gapiInited, gisInited, tokenClient, driveFolderId]);
+                const token = gapi.client.getToken();
+                if (token && token.access_token) {
+                    // We have a valid token, mark as connected
+                    setIsConnectedToDrive(true);
+                    localStorage.setItem('narrativeos-connected', 'true');
+                } else {
+                    // No valid token, mark as disconnected
+                    setIsConnectedToDrive(false);
+                    localStorage.removeItem('narrativeos-connected');
+                }
+            }, [gapiInited, gisInited]);
 
             const handleConnectDrive = async () => {
                 if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
@@ -2841,8 +2801,7 @@
                 
                 const token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    // Token expired or missing - mark unsaved
-                    console.warn('Token expired - user needs to reconnect to Drive');
+                    // Token expired - silently disconnect, don't spam errors
                     setSyncStatus('unsaved');
                     setIsConnectedToDrive(false);
                     localStorage.removeItem('narrativeos-connected');
