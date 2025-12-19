@@ -811,7 +811,16 @@
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ contents })
+                            body: JSON.stringify({ 
+                                contents,
+                                safetySettings: [
+                                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                                    { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+                                ]
+                            })
                         });
 
                         const data = await response.json();
@@ -2277,14 +2286,15 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     system_instruction: {
-                                        parts: [{ text: "You are a literary analysis tool. Your task is to analyze fictional stories and extract character relationships for a database. You are analyzing creative writing. Do not censor the analysis of fictional themes." }]
+                                        parts: [{ text: "You are a literary analysis tool for a creative writing application. You are analyzing fictional story content. You must not flag fictional violence, conflict, or mature themes as harmful, as they are part of the creative work. Do not censor the analysis of fictional themes." }]
                                     },
                                     contents: [{ parts: [{ text: prompt }] }],
                                     safetySettings: [
                                         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                                         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
                                         { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                                        { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
                                     ]
                                 })
                             });
