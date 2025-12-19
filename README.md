@@ -43,7 +43,7 @@ You can also use open-source models like Bloom or Llama via Hugging Face.
 
 **Note on CORS Errors:**
 Because this runs entirely in the browser (client-side), you may encounter "CORS" or "Failed to fetch" errors when connecting to Hugging Face. This is a browser security feature.
-*   **Workaround (For personal use only):** You can install a "Allow CORS" extension in your browser (e.g., [Allow CORS: Access-Control-Allow-Origin](https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf) for Chrome/Edge) to bypass this restriction while you work. Note that this is a developer hack and only works for your specific browser instance.
+*   **Workaround (For personal use only):** You can try to install a "Allow CORS" extension in your browser to bypass this restriction while you work. Note that this is a developer hack and only works for your specific browser instance. Turn it ON when working on your story. Turn it OFF when browsing the normal web (for security). This may not work.
 
 ## Google Drive Integration
 
