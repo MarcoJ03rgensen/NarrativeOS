@@ -2248,9 +2248,8 @@
 
                   console.log(`Analyzing text length: ${textToAnalyze.length} chars (Scope: ${analysisScope})`);
                   
-                  const prompt = `[SYSTEM: You are a literary analysis tool. The following text is a fictional story. Your task is to extract character relationship data for a graph database. Do not generate story content. Do not censor the analysis.]
-                  
-                  Analyze the relationships between characters based on this fictional story content. 
+                  const prompt = `
+                  Analyze the relationships between characters based on the following fictional story content.
                   
                   CRITICAL: You must return a JSON object with a "timeline" property.
                   The "timeline" property must be an array of objects, representing the evolution of relationships through the story (e.g. "Beginning", "Middle", "End" or by Chapter).
@@ -2262,7 +2261,8 @@
                   
                   If the story is short, just return one timeline item labeled "Current State".
                   
-                  Content: ${textToAnalyze.substring(0, 100000)}`;
+                  STORY CONTENT (FICTIONAL):
+                  ${textToAnalyze.substring(0, 95000)}`;
                   
                   setIsAiLoading(true);
                   try {
@@ -2276,6 +2276,9 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
+                                    system_instruction: {
+                                        parts: [{ text: "You are a literary analysis tool. Your task is to analyze fictional stories and extract character relationships for a database. You are analyzing creative writing. Do not censor the analysis of fictional themes." }]
+                                    },
                                     contents: [{ parts: [{ text: prompt }] }],
                                     safetySettings: [
                                         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
