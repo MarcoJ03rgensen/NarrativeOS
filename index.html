@@ -267,6 +267,34 @@
             }
         };
 
+        // Normalize projects loaded from storage to avoid missing fields breaking UI
+        const normalizeProject = (project) => {
+            if (!project) return null;
+            const normalized = { ...project };
+            // Ensure sections
+            if (!Array.isArray(normalized.sections) || normalized.sections.length === 0) {
+                normalized.sections = [...DEFAULT_PROJECT.sections];
+            } else {
+                normalized.sections = normalized.sections.map((sec, idx) => ({
+                    id: sec.id || `section-${idx + 1}`,
+                    name: sec.name || `Section ${idx + 1}`,
+                    chapters: Array.isArray(sec.chapters) && sec.chapters.length > 0 ? sec.chapters.map((ch, cidx) => ({
+                        id: ch.id || `ch-${idx + 1}-${cidx + 1}`,
+                        title: ch.title || `Chapter ${cidx + 1}`,
+                        subtitle: ch.subtitle || '',
+                        content: ch.content || '<p></p>',
+                        status: ch.status || 'draft',
+                        targetWords: ch.targetWords || 0,
+                        characterTags: ch.characterTags || [],
+                        notes: ch.notes || ''
+                    })) : [...DEFAULT_PROJECT.sections[0].chapters]
+                }));
+            }
+            // Ensure timeline array
+            if (!Array.isArray(normalized.timeline)) normalized.timeline = [];
+            return normalized;
+        };
+
         // Stats Management
         const StatsStorage = {
             getHistory() {
@@ -2277,7 +2305,6 @@
             const [driveFolderId, setDriveFolderId] = useState(() => localStorage.getItem('narrativeos-drive-folder') || null);
             const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
             const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
-            const [autoReconnectAttempted, setAutoReconnectAttempted] = useState(false);
             const [userInfo, setUserInfo] = useState(() => {
                 const stored = localStorage.getItem('narrativeos-user-info');
                 return stored ? JSON.parse(stored) : null;
@@ -2361,15 +2388,11 @@
                 const hasConnectedBefore = localStorage.getItem('narrativeos-connected') === 'true';
                 if (!gapiInited || !gisInited || !tokenClient) return;
                 if (!hasConnectedBefore) return;
-                if (autoReconnectAttempted) return;
                 if (gapi.client.getToken()) return; // already have token
 
-                setAutoReconnectAttempted(true);
                 tokenClient.callback = async (resp) => {
                     if (resp && resp.error) {
                         console.warn('Silent Drive auth failed', resp.error);
-                        setIsConnectedToDrive(false);
-                        localStorage.removeItem('narrativeos-connected');
                         return;
                     }
                     setIsConnectedToDrive(true);
@@ -2386,13 +2409,11 @@
                     }
                 };
                 try {
-                    tokenClient.requestAccessToken({ prompt: '' });
+                    tokenClient.requestAccessToken({ prompt: 'none' });
                 } catch (e) {
                     console.warn('Silent token request failed', e);
-                    setIsConnectedToDrive(false);
-                    localStorage.removeItem('narrativeos-connected');
                 }
-            }, [gapiInited, gisInited, tokenClient, driveFolderId, autoReconnectAttempted]);
+            }, [gapiInited, gisInited, tokenClient, driveFolderId]);
 
             const handleConnectDrive = () => {
                 if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
@@ -2468,13 +2489,15 @@
                 }
             };
 
-            const syncFromDrive = async (folderId) => {
+            const syncToDrive = async (folderId) => {
                 setSyncStatus('syncing');
                 try {
                     // List all JSON files in the folder
                     const response = await gapi.client.drive.files.list({
-                        q: `'${folderId}' in parents and mimeType='application/json' and trashed=false`,
-                        fields: 'files(id, name)',
+                        // Token missing - try silent reauth
+                        if (tokenClient) {
+                            try { tokenClient.requestAccessToken({ prompt: 'none' }); } catch (e) { console.warn('Silent reauth during syncToDrive failed', e); }
+                        }
                     });
 
                     const driveFiles = response.result.files;
@@ -2617,10 +2640,11 @@
                 
                 const token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    // Token expired or missing - mark unsaved and require reconnect
+                    // Token expired or missing - mark unsaved and try silent reauth
                     setSyncStatus('unsaved');
-                    setIsConnectedToDrive(false);
-                    localStorage.removeItem('narrativeos-connected');
+                    if (tokenClient) {
+                        try { tokenClient.requestAccessToken({ prompt: 'none' }); } catch (e) { console.warn('Silent reauth during save failed', e); }
+                    }
                     return;
                 }
                 
@@ -3228,14 +3252,16 @@
             
             // Initialize Projects
             useEffect(() => {
-                const allProjects = ProjectStorage.getAllProjects();
+                const allProjectsRaw = ProjectStorage.getAllProjects();
+                const allProjects = allProjectsRaw.map(normalizeProject);
                 setProjects(allProjects);
                 if (allProjects.length > 0) {
-                    setCurrentProject(allProjects[0]);
-                    if (allProjects[0].sections.length > 0) {
-                        setSelectedSectionId(allProjects[0].sections[0].id);
-                        if (allProjects[0].sections[0].chapters.length > 0) {
-                            setSelectedChapterId(allProjects[0].sections[0].chapters[0].id);
+                    const first = normalizeProject(allProjects[0]);
+                    setCurrentProject(first);
+                    if (first.sections.length > 0) {
+                        setSelectedSectionId(first.sections[0].id);
+                        if (first.sections[0].chapters.length > 0) {
+                            setSelectedChapterId(first.sections[0].chapters[0].id);
                         }
                     }
                 }
@@ -4522,7 +4548,8 @@
                                         <div 
                                             key={project.id}
                                             onClick={() => {
-                                                const fresh = ProjectStorage.getProject(project.id) || project;
+                                                const stored = ProjectStorage.getProject(project.id) || project;
+                                                const fresh = normalizeProject(stored);
                                                 setCurrentProject(fresh);
                                                 if (fresh.sections.length > 0) {
                                                     setSelectedSectionId(fresh.sections[0].id);
