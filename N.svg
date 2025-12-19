@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="172.29745053924808 135.23590075080028 486.1709157679199 544.8715042625106" width="486.1709157679199" height="544.8715042625106">
+    <defs>
+        <!-- Original Leather Gradients -->
+        <linearGradient id="leatherRed" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#2b0505;stop-opacity:1"/>
+            <stop offset="35%" style="stop-color:#6e1010;stop-opacity:1"/>
+            <stop offset="65%" style="stop-color:#8a1f1f;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#1a0202;stop-opacity:1"/>
+        </linearGradient>
+
+        <linearGradient id="leatherBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#02030d;stop-opacity:1"/>
+            <stop offset="35%" style="stop-color:#122152;stop-opacity:1"/>
+            <stop offset="65%" style="stop-color:#2b429e;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#02030d;stop-opacity:1"/>
+        </linearGradient>
+
+        <linearGradient id="leatherBrown" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#1f1208;stop-opacity:1"/>
+            <stop offset="35%" style="stop-color:#543823;stop-opacity:1"/>
+            <stop offset="65%" style="stop-color:#754e31;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#140b05;stop-opacity:1"/>
+        </linearGradient>
+
+        <!-- Darker Leather for Headcaps/Tailcaps -->
+        <linearGradient id="leatherRedDark" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#1a0000;stop-opacity:1"/>
+            <stop offset="50%" style="stop-color:#3d0b0b;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#1a0000;stop-opacity:1"/>
+        </linearGradient>
+
+        <linearGradient id="leatherBlueDark" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#010105;stop-opacity:1"/>
+            <stop offset="50%" style="stop-color:#0a122e;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#010105;stop-opacity:1"/>
+        </linearGradient>
+
+        <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#bf953f;stop-opacity:1"/>
+            <stop offset="25%" style="stop-color:#fffac9;stop-opacity:1"/> 
+            <stop offset="50%" style="stop-color:#b38728;stop-opacity:1"/>
+            <stop offset="75%" style="stop-color:#fbf5b7;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#aa771c;stop-opacity:1"/>
+        </linearGradient>
+        
+        <linearGradient id="spineRoundness" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:black;stop-opacity:0.85"/>
+            <stop offset="15%" style="stop-color:black;stop-opacity:0.3"/>
+            <stop offset="35%" style="stop-color:white;stop-opacity:0.02"/> 
+            <stop offset="42%" style="stop-color:white;stop-opacity:0.25"/> 
+            <stop offset="55%" style="stop-color:white;stop-opacity:0.02"/>
+            <stop offset="85%" style="stop-color:black;stop-opacity:0.4"/>
+            <stop offset="100%" style="stop-color:black;stop-opacity:0.85"/>
+        </linearGradient>
+
+        <!-- Headband Patterns -->
+        <pattern id="headbandGold" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
+            <rect x="0" y="0" width="1.5" height="3" fill="#8a6e3e"/>
+            <rect x="1.5" y="0" width="1.5" height="3" fill="#f0e68c"/>
+        </pattern>
+        <pattern id="headbandBlue" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
+            <rect x="0" y="0" width="1.5" height="3" fill="#050a26"/>
+            <rect x="1.5" y="0" width="1.5" height="3" fill="#8899cc"/>
+        </pattern>
+
+        <filter id="leatherEffect" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise"/>
+            <feColorMatrix type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0.08 0" in="noise" result="fadedNoise"/>
+            <feComposite operator="in" in="fadedNoise" in2="SourceGraphic" result="composite"/>
+            <feBlend mode="multiply" in="composite" in2="SourceGraphic"/>
+        </filter>
+
+        <filter id="emboss" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="blur"/>
+            <feOffset in="blur" dx="0" dy="1" result="offsetBlur"/>
+            <feSpecularLighting in="blur" surfaceScale="1.5" specularConstant="1" specularExponent="35" lighting-color="#white" result="specOut">
+                <fePointLight x="-5000" y="-10000" z="20000"/>
+            </feSpecularLighting>
+            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+            <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litPaint"/>
+            <feMerge>
+                <feMergeNode in="offsetBlur"/>
+                <feMergeNode in="litPaint"/>
+            </feMerge>
+        </filter>
+        
+        <!-- Inner Book Shadow -->
+        <filter id="bookShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>
+            <feOffset in="blur" dx="5" dy="8" result="offsetBlur"/>
+            <feComponentTransfer>
+                <feFuncA type="linear" slope="0.5"/>
+            </feComponentTransfer>
+            <feMerge>
+                <feMergeNode in="offsetBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+
+        <!-- Global Drop Shadow (Replaces CSS Shadow) -->
+        <filter id="globalShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="8" dy="15" stdDeviation="8" flood-color="rgba(0,0,0,0.6)" flood-opacity="0.6"/>
+        </filter>
+
+        <clipPath id="cutOff">
+            <rect x="180" y="150" width="440" height="500"/>
+        </clipPath>
+        
+        <linearGradient id="hingeShadow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:rgba(0,0,0,0.6)"/>
+            <stop offset="100%" style="stop-color:rgba(0,0,0,0)"/>
+        </linearGradient>
+        
+        <linearGradient id="hingeShadowRight" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" style="stop-color:rgba(0,0,0,0.6)"/>
+            <stop offset="100%" style="stop-color:rgba(0,0,0,0)"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Wrapper Group for Global Shadow -->
+    <g filter="url(#globalShadow)">
+        <!-- BOOK 3: Diagonal Stroke (Behind) -->
+        <g clip-path="url(#cutOff)">
+            <g transform="translate(205, 220) rotate(-38)" filter="url(#bookShadow)">
+                <rect x="0" y="0" width="100" height="560" rx="4" fill="url(#leatherBrown)" filter="url(#leatherEffect)"/>
+                <rect x="2" y="0" width="8" height="560" fill="url(#hingeShadow)" opacity="0.7"/>
+                <rect x="90" y="0" width="8" height="560" fill="url(#hingeShadowRight)" opacity="0.7"/>
+                <line x1="8" y1="0" x2="8" y2="560" stroke="#0a0502" stroke-width="1.5" opacity="0.6"/>
+                <line x1="92" y1="0" x2="92" y2="560" stroke="#0a0502" stroke-width="1.5" opacity="0.6"/>
+                <rect x="0" y="0" width="100" height="560" rx="4" fill="url(#spineRoundness)"/>
+                <g fill="#140b05" opacity="0.6">
+                    <rect x="0" y="50" width="100" height="8"/>
+                    <rect x="0" y="400" width="100" height="8"/>
+                </g>
+                <rect x="25" y="52" width="50" height="4" fill="url(#gold)" filter="url(#emboss)"/>
+                <rect x="25" y="402" width="50" height="4" fill="url(#gold)" filter="url(#emboss)"/>
+                <rect x="15" y="200" width="70" height="150" rx="2" fill="#140b05" stroke="url(#gold)" stroke-width="2"/>
+                <text x="50" y="280" text-anchor="middle" transform="rotate(90, 50, 280)" font-family="serif" font-weight="bold" fill="url(#gold)" font-size="24" letter-spacing="4" filter="url(#emboss)">VOL II</text>
+            </g>
+        </g>
+
+        <!-- BOOK 1: Left Vertical Stroke (Red) -->
+        <g transform="translate(180, 150)" filter="url(#bookShadow)">
+            
+            <!-- BOTTOM: Sturdy Leather Tailcap (Flattened Curve) -->
+            <path d="M 5,496 Q 55,500 105,496 L 105,485 L 5,485 Z" fill="url(#leatherRedDark)" stroke="#2b0505" stroke-width="1"/>
+            
+            <!-- Headbands (Simple) -->
+            <path d="M 12,496 Q 55,500 98,496" fill="none" stroke="url(#headbandGold)" stroke-width="4" stroke-linecap="butt"/>
+            <path d="M 12,5 Q 55,-10 98,5" fill="none" stroke="url(#headbandGold)" stroke-width="4" stroke-linecap="butt"/>
+
+            <!-- Main Spine -->
+            <rect x="0" y="5" width="110" height="490" fill="url(#leatherRed)" filter="url(#leatherEffect)"/>
+            
+            <!-- Headcap Roll (Top Leather Edge over Headband) -->
+            <path d="M 0,5 Q 55,-12 110,5 L 110,12 L 0,12 Z" fill="url(#leatherRedDark)"/>
+
+            <!-- Hinge Grooves -->
+            <rect x="2" y="5" width="8" height="490" fill="url(#hingeShadow)" opacity="0.7"/>
+            <rect x="100" y="5" width="8" height="490" fill="url(#hingeShadowRight)" opacity="0.7"/>
+            <line x1="8" y1="5" x2="8" y2="495" stroke="#1a0202" stroke-width="2" opacity="0.6"/>
+            <line x1="102" y1="5" x2="102" y2="495" stroke="#1a0202" stroke-width="2" opacity="0.6"/>
+
+            <!-- Roundness Shading -->
+            <rect x="0" y="5" width="110" height="490" fill="url(#spineRoundness)"/>
+
+            <!-- Raised Ribs -->
+            <g fill="#1a0202" opacity="0.6">
+                <rect x="0" y="50" width="110" height="10"/>
+                <rect x="0" y="150" width="110" height="10"/>
+                <rect x="0" y="250" width="110" height="10"/>
+                <rect x="0" y="350" width="110" height="10"/>
+                <rect x="0" y="450" width="110" height="10"/>
+            </g>
+
+            <!-- Gold Banding -->
+            <rect x="20" y="52" width="70" height="2" fill="url(#gold)" filter="url(#emboss)"/>
+            <rect x="20" y="58" width="70" height="2" fill="url(#gold)" filter="url(#emboss)"/>
+            <rect x="20" y="452" width="70" height="2" fill="url(#gold)" filter="url(#emboss)"/>
+            <rect x="20" y="458" width="70" height="2" fill="url(#gold)" filter="url(#emboss)"/>
+
+            <!-- Title Box -->
+            <rect x="25" y="90" width="60" height="40" rx="2" fill="#2e0505" stroke="url(#gold)" stroke-width="1.5"/>
+            <text x="55" y="115" text-anchor="middle" font-family="serif" font-weight="bold" fill="url(#gold)" font-size="22" filter="url(#emboss)">I</text>
+        </g>
+
+        <!-- BOOK 2: Right Vertical Stroke (Blue) -->
+        <g transform="translate(510, 150)" filter="url(#bookShadow)">
+            
+            <!-- BOTTOM: Sturdy Leather Tailcap (Flattened Curve) -->
+            <path d="M 5,496 Q 55,500 105,496 L 105,485 L 5,485 Z" fill="url(#leatherBlueDark)" stroke="#02030d" stroke-width="1"/>
+            
+            <!-- Headbands -->
+            <path d="M 12,496 Q 55,500 98,496" fill="none" stroke="url(#headbandBlue)" stroke-width="4" stroke-linecap="butt"/>
+            <path d="M 12,5 Q 55,-10 98,5" fill="none" stroke="url(#headbandBlue)" stroke-width="4" stroke-linecap="butt"/>
+
+            <!-- Main Spine -->
+            <rect x="0" y="5" width="110" height="490" fill="url(#leatherBlue)" filter="url(#leatherEffect)"/>
+            
+            <!-- Headcap Roll -->
+            <path d="M 0,5 Q 55,-12 110,5 L 110,12 L 0,12 Z" fill="url(#leatherBlueDark)"/>
+            
+            <!-- Hinge Grooves -->
+            <rect x="2" y="5" width="8" height="490" fill="url(#hingeShadow)" opacity="0.7"/>
+            <rect x="100" y="5" width="8" height="490" fill="url(#hingeShadowRight)" opacity="0.7"/>
+            <line x1="8" y1="5" x2="8" y2="495" stroke="#010105" stroke-width="2" opacity="0.6"/>
+            <line x1="102" y1="5" x2="102" y2="495" stroke="#010105" stroke-width="2" opacity="0.6"/>
+
+            <!-- Roundness Shading -->
+            <rect x="0" y="5" width="110" height="490" fill="url(#spineRoundness)"/>
+
+            <!-- Clean Geometric Gold Pattern -->
+            <rect x="35" y="40" width="40" height="420" fill="none" stroke="url(#gold)" stroke-width="1" opacity="0.6"/>
+            <circle cx="55" cy="40" r="3" fill="url(#gold)"/>
+            <circle cx="55" cy="460" r="3" fill="url(#gold)"/>
+
+            <!-- Center Medallion Area -->
+            <circle cx="55" cy="250" r="28" fill="#02030d" stroke="url(#gold)" stroke-width="2.5"/>
+            <text x="55" y="258" text-anchor="middle" font-family="serif" font-weight="bold" fill="url(#gold)" font-size="18" filter="url(#emboss)">III</text>
+            
+            <!-- Bottom Plate -->
+            <rect x="30" y="430" width="50" height="2" fill="url(#gold)" opacity="0.7"/>
+        </g>
+    </g>
+</svg>
