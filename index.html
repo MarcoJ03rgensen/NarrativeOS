@@ -775,6 +775,10 @@
                     alert('Please enter your Hugging Face Token first.');
                     return;
                 }
+                if (aiProvider === 'github' && !githubToken) {
+                    alert('Please enter your GitHub Personal Access Token first.');
+                    return;
+                }
 
                 const userMessage = { role: 'user', text: aiPrompt };
                 setChatHistory(prev => [...prev, userMessage]);
@@ -819,6 +823,36 @@
                         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
                             aiText = data.candidates[0].content.parts[0].text;
                         }
+                    } else if (aiProvider === 'github') {
+                        // GitHub Models (Azure AI Inference)
+                        const messages = [
+                            { role: "system", content: `You are a creative writing assistant. Context: ${content.substring(0, 2000)}...` },
+                            ...chatHistory.map(msg => ({ role: msg.role === 'model' ? 'assistant' : 'user', content: msg.text })),
+                            { role: "user", content: userMessage.text }
+                        ];
+
+                        const response = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${githubToken}`
+                            },
+                            body: JSON.stringify({
+                                messages: messages,
+                                model: githubModel,
+                                temperature: 0.7,
+                                max_tokens: 1000
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`GitHub Models Error ${response.status}: ${errorText}`);
+                        }
+
+                        const data = await response.json();
+                        aiText = data.choices[0].message.content;
+
                     } else {
                         // Hugging Face
                         const promptText = `[INST] You are a creative writing assistant. Context: ${content.substring(0, 2000)}... Task: ${userMessage.text} [/INST]`;
@@ -1344,6 +1378,7 @@
                                         >
                                             <option value="gemini" className="bg-slate-900 text-slate-300">Google Gemini</option>
                                             <option value="huggingface" className="bg-slate-900 text-slate-300">Hugging Face (Open Source)</option>
+                                            <option value="github" className="bg-slate-900 text-slate-300">GitHub Models (Azure AI)</option>
                                         </select>
                                     </div>
 
@@ -1417,6 +1452,44 @@
                                                         className="bg-transparent text-xs text-purple-300 border-none outline-none cursor-pointer hover:text-purple-200 text-right appearance-none"
                                                     >
                                                         {HF_MODELS.map(model => (
+                                                            <option key={model.id} value={model.id} className="bg-slate-900 text-slate-300">
+                                                                {model.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* GitHub Models Settings */}
+                                    {aiProvider === 'github' && (
+                                        <>
+                                            {!githubToken ? (
+                                                <div className="space-y-2 mb-3">
+                                                    <input 
+                                                        type="password" 
+                                                        placeholder="Enter GitHub Personal Access Token" 
+                                                        className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-purple-500"
+                                                        onChange={(e) => {
+                                                            setGithubToken(e.target.value);
+                                                            localStorage.setItem('github-token', e.target.value);
+                                                        }}
+                                                    />
+                                                    <a href="https://github.com/settings/tokens" target="_blank" className="text-xs text-purple-300 hover:underline block">Get a token here (Classic, No scopes needed)</a>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-between items-center px-1 mb-3">
+                                                    <span className="text-[10px] text-slate-400 uppercase font-bold">Model</span>
+                                                    <select 
+                                                        value={githubModel}
+                                                        onChange={(e) => {
+                                                            setGithubModel(e.target.value);
+                                                            localStorage.setItem('github-model', e.target.value);
+                                                        }}
+                                                        className="bg-transparent text-xs text-purple-300 border-none outline-none cursor-pointer hover:text-purple-200 text-right appearance-none"
+                                                    >
+                                                        {GITHUB_MODELS.map(model => (
                                                             <option key={model.id} value={model.id} className="bg-slate-900 text-slate-300">
                                                                 {model.name}
                                                             </option>
@@ -1578,12 +1651,14 @@
             const [globalCharCount, setGlobalCharCount] = useState(0);
 
             // AI State (Lifted from WordEditor)
-            const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('narrativeos-ai-provider') || 'gemini'); // 'gemini' | 'huggingface'
+            const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('narrativeos-ai-provider') || 'gemini'); // 'gemini' | 'huggingface' | 'github'
             const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('gemini-api-key') || '');
             const [hfToken, setHfToken] = useState(() => localStorage.getItem('hf-token') || '');
+            const [githubToken, setGithubToken] = useState(() => localStorage.getItem('github-token') || '');
             const [availableModels, setAvailableModels] = useState([]);
             const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini-model') || 'gemini-1.5-flash');
             const [hfModel, setHfModel] = useState(() => localStorage.getItem('hf-model') || 'bigscience/bloom');
+            const [githubModel, setGithubModel] = useState(() => localStorage.getItem('github-model') || 'gpt-4o');
             const [isAiLoading, setIsAiLoading] = useState(false);
 
             // Hugging Face Models List
@@ -1593,6 +1668,16 @@
                 { id: 'meta-llama/Meta-Llama-3-8B-Instruct', name: 'Llama 3 (8B)' },
                 { id: 'mistralai/Mistral-7B-Instruct-v0.2', name: 'Mistral 7B' },
                 { id: 'google/gemma-7b-it', name: 'Gemma 7B' }
+            ];
+
+            // GitHub Models List
+            const GITHUB_MODELS = [
+                { id: 'gpt-4o', name: 'GPT-4o' },
+                { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+                { id: 'Phi-3-mini-4k-instruct', name: 'Phi-3 Mini' },
+                { id: 'Mistral-Nemo', name: 'Mistral Nemo' },
+                { id: 'Llama-3.1-8B-Instruct', name: 'Llama 3.1 (8B)' },
+                { id: 'Llama-3.1-70B-Instruct', name: 'Llama 3.1 (70B)' }
             ];
 
             // Fetch available models when API key is set (Gemini Only)
@@ -1680,6 +1765,10 @@
                       alert('Please enter your Hugging Face Token.');
                       return;
                   }
+                  if (aiProvider === 'github' && !githubToken) {
+                      alert('Please enter your GitHub Personal Access Token.');
+                      return;
+                  }
                   
                   if (!currentProject) {
                       console.error("No current project loaded.");
@@ -1723,6 +1812,30 @@
                         if (data.candidates && data.candidates[0]) {
                             jsonString = data.candidates[0].content.parts[0].text;
                         }
+                      } else if (aiProvider === 'github') {
+                          // GitHub Models
+                          console.log(`Using GitHub model: ${githubModel}`);
+                          const response = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${githubToken}`
+                                },
+                                body: JSON.stringify({
+                                    messages: [{ role: "user", content: prompt }],
+                                    model: githubModel,
+                                    temperature: 0.7,
+                                    max_tokens: 2000
+                                })
+                            });
+                            
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                throw new Error(`GitHub Models Error ${response.status}: ${errorText}`);
+                            }
+                            
+                            const data = await response.json();
+                            jsonString = data.choices[0].message.content;
                       } else {
                           // Hugging Face
                           console.log(`Using HF model: ${hfModel}`);

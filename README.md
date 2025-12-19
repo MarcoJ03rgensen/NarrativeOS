@@ -45,6 +45,17 @@ You can also use open-source models like Bloom or Llama via Hugging Face.
 Because this runs entirely in the browser (client-side), you may encounter "CORS" or "Failed to fetch" errors when connecting to Hugging Face. This is a browser security feature.
 *   **Workaround (For personal use only):** You can try to install a "Allow CORS" extension in your browser to bypass this restriction while you work. Note that this is a developer hack and only works for your specific browser instance. Turn it ON when working on your story. Turn it OFF when browsing the normal web (for security). This may not work.
 
+## Using GitHub Models (Azure AI)
+
+You can use models like GPT-4o, Llama 3.1, and Phi-3 via GitHub Models.
+
+1.  **Get a Token**: Go to [GitHub Settings > Developer Settings > Personal Access Tokens (Classic)](https://github.com/settings/tokens).
+2.  Generate a new token (no specific scopes are needed for public models, but `read:user` is safe).
+3.  Select "GitHub Models" in the AI provider dropdown.
+4.  Enter your token.
+
+**Note:** GitHub Models (via Azure AI) may also have CORS restrictions similar to Hugging Face when accessed directly from a browser.
+
 ## Google Drive Integration
 
 To enable cloud sync, the application uses a default configuration. If you are hosting this yourself, you may need to configure your own Google Cloud Project credentials in the code.
