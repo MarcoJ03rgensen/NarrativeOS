@@ -1,6 +1,7 @@
 {
-  "name": "My Website",
-  "short_name": "Website",
+  "name": "NarrativeOS - Creative Writing Platform",
+  "short_name": "NarrativeOS",
+  "description": "Creative writing platform for novelists and storytellers",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,7 +14,10 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "categories": ["productivity", "entertainment"]
 }
