@@ -97,7 +97,7 @@
             List, ListOrdered, Indent, Outdent, Link as LinkIcon, 
             RemoveFormatting, Strikethrough, Subscript, Superscript, 
             Table as TableIcon, Type, Highlighter, Heading1, Palette,
-            Maximize, Minimize, FileDown, X, Loader2, Trash2
+            Maximize, Minimize, FileDown, X, Loader2, Trash2, ExternalLink, CloudOff
         } from 'https://esm.sh/lucide-react@0.263.1';
 
         /**
@@ -360,7 +360,7 @@
 
         const Divider = () => <div className="w-px h-6 bg-white/10 mx-2 self-center"></div>;
 
-        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive, userInfo, setUserInfo }) {
+        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive, userInfo, setUserInfo, projectDriveFileId }) {
           const [content, setContent] = useState(initialContent || '');
           const [fileName, setFileName] = useState(projectName || 'Untitled Project');
           const [isDirty, setIsDirty] = useState(false);
@@ -893,6 +893,17 @@
                     <Cloud className="w-4 h-4" />
                     <span className="hidden sm:inline">{isConnectedToDrive ? 'Synced' : 'Connect'}</span>
                   </button>
+
+                  {isConnectedToDrive && projectDriveFileId && (
+                    <button 
+                      onClick={() => window.open(`https://drive.google.com/file/d/${projectDriveFileId}/view`, '_blank')}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
+                      title="Open this project file in Google Drive"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span className="hidden sm:inline">View in Drive</span>
+                    </button>
+                  )}
                   
                   <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-white/10 cursor-pointer hover:scale-105 transition-transform" title={userInfo ? `Signed in as ${userInfo.displayName} (${userInfo.emailAddress})` : 'Not signed in'}>
                     {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : 'USER'}
@@ -2962,6 +2973,7 @@
                             onConnectDrive={handleConnectDrive}
                             userInfo={userInfo}
                             setUserInfo={setUserInfo}
+                            projectDriveFileId={currentProject.driveFileId}
                             onContentChange={(content) => saveChapterContent(content)}
                             onStatsUpdate={(w, c) => {
                                 setGlobalWordCount(w);
