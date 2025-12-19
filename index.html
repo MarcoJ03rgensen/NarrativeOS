@@ -2277,6 +2277,7 @@
             const [driveFolderId, setDriveFolderId] = useState(() => localStorage.getItem('narrativeos-drive-folder') || null);
             const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
             const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
+            const [autoReconnectAttempted, setAutoReconnectAttempted] = useState(false);
             const [userInfo, setUserInfo] = useState(() => {
                 const stored = localStorage.getItem('narrativeos-user-info');
                 return stored ? JSON.parse(stored) : null;
@@ -2354,6 +2355,44 @@
 
                 return () => clearTimeout(timeoutId);
             }, [currentProject, isConnectedToDrive, driveFolderId]);
+
+            // Silent re-auth if user was previously connected (reduces prompts)
+            useEffect(() => {
+                const hasConnectedBefore = localStorage.getItem('narrativeos-connected') === 'true';
+                if (!gapiInited || !gisInited || !tokenClient) return;
+                if (!hasConnectedBefore) return;
+                if (autoReconnectAttempted) return;
+                if (gapi.client.getToken()) return; // already have token
+
+                setAutoReconnectAttempted(true);
+                tokenClient.callback = async (resp) => {
+                    if (resp && resp.error) {
+                        console.warn('Silent Drive auth failed', resp.error);
+                        setIsConnectedToDrive(false);
+                        localStorage.removeItem('narrativeos-connected');
+                        return;
+                    }
+                    setIsConnectedToDrive(true);
+                    localStorage.setItem('narrativeos-connected', 'true');
+                    // If folder is known, sync; otherwise ensure folder
+                    if (driveFolderId) {
+                        try {
+                            await syncFromDrive(driveFolderId);
+                        } catch (e) {
+                            console.warn('Silent syncFromDrive failed', e);
+                        }
+                    } else {
+                        await ensureProjectFolder();
+                    }
+                };
+                try {
+                    tokenClient.requestAccessToken({ prompt: '' });
+                } catch (e) {
+                    console.warn('Silent token request failed', e);
+                    setIsConnectedToDrive(false);
+                    localStorage.removeItem('narrativeos-connected');
+                }
+            }, [gapiInited, gisInited, tokenClient, driveFolderId, autoReconnectAttempted]);
 
             const handleConnectDrive = () => {
                 if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
@@ -4483,11 +4522,12 @@
                                         <div 
                                             key={project.id}
                                             onClick={() => {
-                                                setCurrentProject(project);
-                                                if (project.sections.length > 0) {
-                                                    setSelectedSectionId(project.sections[0].id);
-                                                    if (project.sections[0].chapters.length > 0) {
-                                                        setSelectedChapterId(project.sections[0].chapters[0].id);
+                                                const fresh = ProjectStorage.getProject(project.id) || project;
+                                                setCurrentProject(fresh);
+                                                if (fresh.sections.length > 0) {
+                                                    setSelectedSectionId(fresh.sections[0].id);
+                                                    if (fresh.sections[0].chapters.length > 0) {
+                                                        setSelectedChapterId(fresh.sections[0].chapters[0].id);
                                                     }
                                                 }
                                                 setShowProjectModal(false);
