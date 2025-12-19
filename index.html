@@ -2268,7 +2268,23 @@
             const syncToDrive = async (folderId) => {
                 // Push all local projects to Drive (for protecting existing projects on first connection)
                 try {
-                    const token = gapi.client.getToken();
+                    let token = gapi.client.getToken();
+                    if (!token || !token.access_token) {
+                        // Token missing - try to refresh
+                        try {
+                            if (tokenClient) {
+                                await new Promise((resolve) => {
+                                    tokenClient.callback = () => resolve();
+                                    tokenClient.requestAccessToken({prompt: ''});
+                                });
+                                token = gapi.client.getToken();
+                            }
+                        } catch (err) {
+                            console.warn('Failed to refresh token for Drive sync:', err);
+                            return;
+                        }
+                    }
+                    
                     if (!token || !token.access_token) {
                         console.warn('No valid access token for Drive sync');
                         return;
@@ -2311,12 +2327,29 @@
 
             const saveToDrive = async (project) => {
                 if (!driveFolderId) return;
+                if (!isConnectedToDrive) return; // Skip if not connected
                 
-                const token = gapi.client.getToken();
+                let token = gapi.client.getToken();
                 if (!token || !token.access_token) {
-                    console.warn('No valid access token for Drive save');
-                    setSyncStatus('unsaved');
-                    return;
+                    // Token expired or missing - try to refresh
+                    try {
+                        if (tokenClient) {
+                            await new Promise((resolve) => {
+                                tokenClient.callback = () => resolve();
+                                tokenClient.requestAccessToken({prompt: ''});
+                            });
+                            token = gapi.client.getToken();
+                        }
+                    } catch (err) {
+                        console.warn('Failed to refresh token, skipping Drive save:', err);
+                        // Don't set unsaved status - just skip this save attempt
+                        return;
+                    }
+                    
+                    if (!token || !token.access_token) {
+                        console.warn('No valid access token for Drive save after refresh attempt');
+                        return;
+                    }
                 }
                 
                 setSyncStatus('syncing');
