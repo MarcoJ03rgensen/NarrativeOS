@@ -1642,7 +1642,9 @@
             setHfModel,
             setGithubModel,
             analyzeRelationships,
-            isAiLoading
+            isAiLoading,
+            analysisScope,
+            setAnalysisScope
         }) => {
             // Icons are imported at the top level
 
@@ -1706,7 +1708,7 @@
                                 const dx = nextNodes[i].x - nextNodes[j].x;
                                 const dy = nextNodes[i].y - nextNodes[j].y;
                                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                                const force = 5000 / (dist * dist); // Repulsion strength
+                                const force = 2000 / (dist * dist); // Repulsion strength
                                 const fx = (dx / dist) * force;
                                 const fy = (dy / dist) * force;
 
@@ -1742,8 +1744,8 @@
                             node.vy += (center.y - node.y) * 0.01;
 
                             // Apply Velocity
-                            node.vx *= 0.9; // Damping
-                            node.vy *= 0.9;
+                            node.vx *= 0.8; // Damping
+                            node.vy *= 0.8;
                             node.x += node.vx;
                             node.y += node.vy;
                         });
@@ -2008,8 +2010,22 @@
                         <ChevronDown className="w-3 h-3 text-slate-500" />
                     </div>
 
+                    {/* Scope Selector */}
+                    <div className="bg-slate-900/80 backdrop-blur rounded-full border border-slate-700 px-4 py-3 flex items-center gap-2 shadow-lg">
+                        <span className="text-xs text-slate-400 font-bold uppercase mr-1">Scope</span>
+                        <select 
+                            className="bg-transparent text-xs text-white font-mono outline-none cursor-pointer"
+                            value={analysisScope}
+                            onChange={(e) => setAnalysisScope(e.target.value)}
+                        >
+                            <option value="project" className="bg-slate-900">Full Book</option>
+                            <option value="chapter" className="bg-slate-900">Current Chapter</option>
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-slate-500" />
+                    </div>
+
                         <button 
-                        onClick={analyzeRelationships}
+                        onClick={() => analyzeRelationships()}
                         disabled={isAiLoading}
                         className={`px-6 py-3 ${isAiLoading ? 'bg-purple-800 cursor-wait' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500'} text-white rounded-full font-bold shadow-lg shadow-purple-900/50 flex items-center gap-2 transition-all hover:scale-105`}
                     >
@@ -2085,6 +2101,7 @@
             const [githubModel, setGithubModel] = useState(() => localStorage.getItem('github-model') || 'gpt-4o');
             const [isAiLoading, setIsAiLoading] = useState(false);
             const [relationships, setRelationships] = useState([]); // Store AI-analyzed relationships
+            const [analysisScope, setAnalysisScope] = useState('project'); // 'project' or 'chapter'
             const [relationshipTimeline, setRelationshipTimeline] = useState([]); // Store timeline of relationships
             const [timelineIndex, setTimelineIndex] = useState(0); // Current point in timeline
             const [showRelationshipEditor, setShowRelationshipEditor] = useState(false); // Toggle for editor modal
@@ -2203,8 +2220,33 @@
                       return;
                   }
 
-                  const allText = currentProject.sections.map(s => s.chapters.map(c => c.content).join('\n')).join('\n').replace(/<[^>]*>/g, ' ');
-                  console.log(`Analyzing text length: ${allText.length} chars`);
+                  let textToAnalyze = "";
+                  if (analysisScope === 'chapter') {
+                      if (!selectedChapterId) {
+                          alert("Please select a chapter in the editor first.");
+                          return;
+                      }
+                      // Find the chapter
+                      let foundChapter = null;
+                      for (const section of currentProject.sections) {
+                          const ch = section.chapters.find(c => c.id === selectedChapterId);
+                          if (ch) {
+                              foundChapter = ch;
+                              break;
+                          }
+                      }
+                      if (foundChapter) {
+                          textToAnalyze = foundChapter.content.replace(/<[^>]*>/g, ' ');
+                      } else {
+                          alert("Could not find selected chapter content.");
+                          return;
+                      }
+                  } else {
+                      // Full Project
+                      textToAnalyze = currentProject.sections.map(s => s.chapters.map(c => c.content).join('\n')).join('\n').replace(/<[^>]*>/g, ' ');
+                  }
+
+                  console.log(`Analyzing text length: ${textToAnalyze.length} chars (Scope: ${analysisScope})`);
                   
                   const prompt = `[SYSTEM: You are a literary analysis tool. The following text is a fictional story. Your task is to extract character relationship data for a graph database. Do not generate story content. Do not censor the analysis.]
                   
@@ -2220,7 +2262,7 @@
                   
                   If the story is short, just return one timeline item labeled "Current State".
                   
-                  Content: ${allText.substring(0, 30000)}`;
+                  Content: ${textToAnalyze.substring(0, 100000)}`;
                   
                   setIsAiLoading(true);
                   try {
@@ -3153,6 +3195,8 @@
                         setGithubModel={setGithubModel}
                         analyzeRelationships={analyzeRelationships}
                         isAiLoading={isAiLoading}
+                        analysisScope={analysisScope}
+                        setAnalysisScope={setAnalysisScope}
                     />}
                     {activeTab === 'stats' && renderStats()}
                 </main>
