@@ -2489,19 +2489,26 @@
                 }
             };
 
-            const syncToDrive = async (folderId) => {
+            const syncFromDrive = async (folderId) => {
                 setSyncStatus('syncing');
                 try {
+                    const token = gapi.client.getToken();
+                    if (!token || !token.access_token) {
+                        if (tokenClient) {
+                            try { tokenClient.requestAccessToken({ prompt: 'none' }); } catch (e) { console.warn('Silent reauth during syncFromDrive failed', e); }
+                        }
+                        setSyncStatus('unsaved');
+                        return;
+                    }
+
                     // List all JSON files in the folder
                     const response = await gapi.client.drive.files.list({
-                        // Token missing - try silent reauth
-                        if (tokenClient) {
-                            try { tokenClient.requestAccessToken({ prompt: 'none' }); } catch (e) { console.warn('Silent reauth during syncToDrive failed', e); }
-                        }
+                        q: `'${folderId}' in parents and trashed=false and mimeType='application/json'`,
+                        fields: 'files(id, name, modifiedTime)'
                     });
 
-                    const driveFiles = response.result.files;
-                    if (!driveFiles || driveFiles.length === 0) {
+                    const driveFiles = response.result.files || [];
+                    if (driveFiles.length === 0) {
                         setSyncStatus('saved');
                         return;
                     }
