@@ -2536,28 +2536,35 @@
                 const attemptSilentAuth = async () => {
                     try {
                         setIsDriveLoading(true);
-                        await new Promise((resolve, reject) => {
-                            tokenClient.callback = async (resp) => {
-                                if (resp && resp.error) {
-                                    reject(resp.error);
-                                    return;
-                                }
-                                setIsConnectedToDrive(true);
-                                localStorage.setItem('narrativeos-connected', 'true');
-                                // If folder is known, sync; otherwise ensure folder
-                                if (driveFolderId) {
-                                    try {
-                                        await syncFromDrive(driveFolderId);
-                                    } catch (e) {
-                                        console.warn('Silent syncFromDrive failed', e);
+                        await Promise.race([
+                            new Promise((resolve, reject) => {
+                                tokenClient.callback = async (resp) => {
+                                    if (resp && resp.error) {
+                                        reject(resp.error);
+                                        return;
                                     }
-                                } else {
-                                    await ensureProjectFolder();
+                                    setIsConnectedToDrive(true);
+                                    localStorage.setItem('narrativeos-connected', 'true');
+                                    // If folder is known, sync; otherwise ensure folder
+                                    if (driveFolderId) {
+                                        try {
+                                            await syncFromDrive(driveFolderId);
+                                        } catch (e) {
+                                            console.warn('Silent syncFromDrive failed', e);
+                                        }
+                                    } else {
+                                        await ensureProjectFolder();
+                                    }
+                                    resolve();
+                                };
+                                try {
+                                    tokenClient.requestAccessToken({ prompt: 'none' });
+                                } catch (err) {
+                                    reject(err);
                                 }
-                                resolve();
-                            };
-                            tokenClient.requestAccessToken({ prompt: 'none' });
-                        });
+                            }),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
+                        ]);
                     } catch (e) {
                         console.warn('Silent token request failed - user will need to reconnect manually', e);
                         setIsConnectedToDrive(false);
@@ -2583,41 +2590,52 @@
                 setIsDriveLoading(true);
                 
                 try {
-                    await new Promise((resolve, reject) => {
-                        tokenClient.callback = async (resp) => {
-                            try {
-                                if (resp.error !== undefined) {
-                                    reject(resp);
-                                    return;
-                                }
-                                setIsConnectedToDrive(true);
-                                localStorage.setItem('narrativeos-connected', 'true');
-                                
-                                // Fetch user info to confirm identity
+                    await Promise.race([
+                        new Promise((resolve, reject) => {
+                            tokenClient.callback = async (resp) => {
                                 try {
-                                    const about = await gapi.client.drive.about.get({fields: 'user'});
-                                    setUserInfo(about.result.user);
-                                    localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
-                                } catch (e) {
-                                    console.error("Could not fetch user info", e);
+                                    if (resp.error !== undefined) {
+                                        reject(resp);
+                                        return;
+                                    }
+                                    setIsConnectedToDrive(true);
+                                    localStorage.setItem('narrativeos-connected', 'true');
+                                    
+                                    // Fetch user info to confirm identity
+                                    try {
+                                        const about = await gapi.client.drive.about.get({fields: 'user'});
+                                        setUserInfo(about.result.user);
+                                        localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
+                                    } catch (e) {
+                                        console.error("Could not fetch user info", e);
+                                    }
+
+                                    await ensureProjectFolder();
+                                    resolve();
+                                } catch (err) {
+                                    reject(err);
                                 }
+                            };
 
-                                await ensureProjectFolder();
-                                resolve();
+                            try {
+                                // Request with consent and access_type offline for refresh token
+                                const hasToken = gapi.client.getToken() !== null;
+                                tokenClient.requestAccessToken({
+                                    prompt: hasToken ? '' : 'consent'
+                                });
                             } catch (err) {
-                                reject(err);
+                                reject(new Error('Popup blocked or auth failed'));
                             }
-                        };
-
-                        // Request with consent and access_type offline for refresh token
-                        const hasToken = gapi.client.getToken() !== null;
-                        tokenClient.requestAccessToken({
-                            prompt: hasToken ? '' : 'consent'
-                        });
-                    });
+                        }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - popup may be blocked')), 30000))
+                    ]);
                 } catch (err) {
                     console.error('Drive connection failed:', err);
-                    alert('Failed to connect to Google Drive. Please try again.');
+                    if (err.message && err.message.includes('popup')) {
+                        alert('Could not connect to Google Drive. Please allow popups for this site and try again.');
+                    } else {
+                        alert('Failed to connect to Google Drive. Please try again.');
+                    }
                 } finally {
                     setIsDriveLoading(false);
                 }
