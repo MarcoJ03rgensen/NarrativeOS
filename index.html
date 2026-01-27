@@ -2366,6 +2366,7 @@
             const [showCloudModal, setShowCloudModal] = useState(false);
             const [firebaseConfig, setFirebaseConfig] = useState(() => JSON.parse(localStorage.getItem('narrativeos-firebase-config') || 'null'));
             const [firebaseUser, setFirebaseUser] = useState(null);
+            const [userInfo, setUserInfo] = useState(null); // Add missing userInfo state
             const [isConnectedToCloud, setIsConnectedToCloud] = useState(false);
             const [syncStatus, setSyncStatus] = useState('saved'); 
             const [isCloudLoading, setIsCloudLoading] = useState(false);
