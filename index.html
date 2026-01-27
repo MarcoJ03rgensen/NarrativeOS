@@ -158,8 +158,17 @@
             List, ListOrdered, Indent, Outdent, Link as LinkIcon, 
             RemoveFormatting, Strikethrough, Subscript, Superscript, 
             Table as TableIcon, Type, Highlighter, Heading1, Palette,
-            Maximize, Minimize, FileDown, X, Loader2, Trash2, ExternalLink, CloudOff, Lightbulb
+            Maximize, Minimize, FileDown, X, Loader2, Trash2, ExternalLink, CloudOff, Lightbulb, Database, LogOut
         } from 'https://esm.sh/lucide-react@0.263.1';
+        
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { 
+            getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, 
+            onSnapshot, query, where, orderBy, enableIndexedDbPersistence, serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { 
+            getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         /**
          * NARRATIVE OS: ULTIMATE EDITION
@@ -1547,72 +1556,7 @@
               )}
 
               {/* --- Modern Glass Modal --- */}
-              {showCloudModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                  <div className="bg-gray-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-md p-8 border border-white/10 transform transition-all scale-100 ring-1 ring-white/10">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-3">
-                         <div className="bg-purple-500/20 p-2 rounded-xl shadow-inner border border-purple-500/20">
-                            <Cloud className="w-6 h-6 text-purple-400" />
-                         </div>
-                         <h3 className="text-xl font-bold text-white">Cloud Sync (GitHub)</h3>
-                      </div>
-                      <button 
-                        onClick={() => setShowCloudModal(false)} 
-                        className="text-gray-500 hover:text-white p-1 hover:bg-white/10 rounded-full transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    <p className="text-gray-400 mb-8 leading-relaxed">
-                      Connect your <strong>GitHub Account</strong> to sync your stories.
-                      Data is stored in a private <strong>Gist</strong>.
-                      <br/><br/>
-                      <span className="text-xs text-gray-500">Requires a Personal Access Token with <code>gist</code> scope.</span>
-                    </p>
-
-                    {!isConnectedToDrive ? (
-                      <div className="space-y-4">
-                         <button 
-                          onClick={handleConnectDrive}
-                          className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-purple-900/50 transition-all hover:scale-[1.02] flex justify-center items-center group"
-                         >
-                           <span className="group-hover:animate-pulse mr-2">⚡</span> Connect GitHub
-                         </button>
-                         <p className="text-xs text-center text-gray-500">
-                           <a href="https://github.com/settings/tokens" className="underline hover:text-gray-400" target="_blank">Generate Token Here</a>
-                         </p>
-                      </div>
-                    ) : (
-                       <div className="text-center py-6 bg-emerald-900/20 rounded-xl border border-emerald-500/20">
-                         <div className="mx-auto w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 shadow-sm border border-emerald-500/20">
-                            <Check className="w-8 h-8 text-emerald-400" />
-                         </div>
-                         <p className="text-lg font-bold text-white">Sync Active</p>
-                         {userInfo && <p className="text-sm text-emerald-300 mt-1">Connected as {userInfo.displayName}</p>}
-                         <p className="text-sm text-gray-400 mt-1">Storage: GitHub Gist</p>
-                         <button 
-                           onClick={() => { 
-                               setIsConnectedToDrive(false); 
-                               setUserInfo(null); 
-                               setShowCloudModal(false);
-                               setGistToken('');
-                               setGistId(null);
-                               localStorage.removeItem('narrativeos-connected');
-                               localStorage.removeItem('narrativeos-user-info');
-                               localStorage.removeItem('narrativeos-github-token');
-                               localStorage.removeItem('narrativeos-gist-id');
-                           }}
-                           className="mt-6 text-rose-400 text-sm font-semibold hover:text-rose-300 transition-colors"
-                         >
-                           Disconnect Account
-                         </button>
-                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Note: This modal is handled in the main NarrativeOS component now */}
 
             </div>
           );
@@ -2418,207 +2362,279 @@
             };
 
             // Cloud Sync State
-            // Cloud Sync State (GitHub)
-            const [gistToken, setGistToken] = useState(() => localStorage.getItem('narrativeos-github-token') || '');
-            const [gistId, setGistId] = useState(() => localStorage.getItem('narrativeos-gist-id') || null);
-            const [isConnectedToCloud, setIsConnectedToCloud] = useState(() => !!localStorage.getItem('narrativeos-github-token'));
+            // Cloud Sync State (Firebase)
+            const [showCloudModal, setShowCloudModal] = useState(false);
+            const [firebaseConfig, setFirebaseConfig] = useState(() => JSON.parse(localStorage.getItem('narrativeos-firebase-config') || 'null'));
+            const [firebaseUser, setFirebaseUser] = useState(null);
+            const [isConnectedToCloud, setIsConnectedToCloud] = useState(false);
             const [syncStatus, setSyncStatus] = useState('saved'); 
             const [isCloudLoading, setIsCloudLoading] = useState(false);
-            const [userInfo, setUserInfo] = useState(() => {
-                const stored = localStorage.getItem('narrativeos-user-info');
-                return stored ? JSON.parse(stored) : null;
-            });
+            const [db, setDb] = useState(null);
+            const [auth, setAuth] = useState(null);
 
-            // Initialize / Verify Token
+            // Legacy Aliases for UI compatibility
+            const handleConnectDrive = () => setShowCloudModal(true);
+            const isConnectedToDrive = isConnectedToCloud;
+
+            // Initialize Firebase
             useEffect(() => {
-                if (gistToken) {
-                    setIsConnectedToCloud(true);
-                    fetch('https://api.github.com/user', {
-                        headers: { 'Authorization': `token ${gistToken}` }
-                    })
-                    .then(res => {
-                        if (res.ok) return res.json();
-                        throw new Error('Invalid token');
-                    })
-                    .then(user => {
-                        setUserInfo({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email });
-                        localStorage.setItem('narrativeos-user-info', JSON.stringify({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email }));
-                    })
-                    .catch(() => {
+                if (firebaseConfig) {
+                    try {
+                        const app = initializeApp(firebaseConfig);
+                        const dbInstance = getFirestore(app);
+                        const authInstance = getAuth(app);
+                        
+                        // Offline Persistence
+                        enableIndexedDbPersistence(dbInstance).catch((err) => {
+                             console.warn("Persistence error:", err.code);
+                        });
+
+                        setDb(dbInstance);
+                        setAuth(authInstance);
+
+                        const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
+                            if (user) {
+                                setFirebaseUser(user);
+                                setIsConnectedToCloud(true);
+                                setUserInfo({
+                                    displayName: user.displayName,
+                                    photoLink: user.photoURL,
+                                    emailAddress: user.email
+                                });
+
+                                // Fetch User's Books from Firestore
+                                try {
+                                    const booksRef = collection(dbInstance, "books");
+                                    const q = query(booksRef, where("author_id", "==", user.uid));
+                                    const snap = await getDocs(q);
+                                    const cloudProjects = [];
+                                    snap.forEach(d => {
+                                        const data = d.data();
+                                        cloudProjects.push({ 
+                                            id: d.id, 
+                                            name: data.title || "Untitled", 
+                                            lastModified: data.updated_at ? data.updated_at.toMillis() : Date.now(),
+                                            sections: [], // Content loaded on demand
+                                            isCloud: true 
+                                        });
+                                    });
+                                    
+                                    if (cloudProjects.length > 0) {
+                                        setProjects(prev => {
+                                            const existingIds = new Set(prev.map(p => p.id));
+                                            const newProjs = cloudProjects.filter(p => !existingIds.has(p.id));
+                                            return [...prev, ...newProjs];
+                                        });
+                                    }
+                                } catch (e) {
+                                    console.error("Error fetching books:", e);
+                                }
+
+                            } else {
+                                setFirebaseUser(null);
+                                setIsConnectedToCloud(false);
+                            }
+                        });
+                        return () => unsubscribe();
+                    } catch (e) {
+                        console.error("Firebase Init Error", e);
                         setIsConnectedToCloud(false);
-                        localStorage.removeItem('narrativeos-github-token');
-                        setGistToken('');
-                    });
-                } else {
-                    setIsConnectedToCloud(false);
+                    }
                 }
-            }, [gistToken]);
+            }, [firebaseConfig]);
 
-            // Auto-Sync Current Project to Cloud
-            useEffect(() => {
-                if (!currentProject || !isConnectedToCloud || !gistId) return;
+            const handleGoogleLogin = async () => {
+                if (!auth) return;
+                setIsCloudLoading(true);
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Login failed", error);
+                    alert("Login failed: " + error.message);
+                } finally {
+                    setIsCloudLoading(false);
+                }
+            };
+            
+            const handleLogout = async () => {
+                if (!auth) return;
+                await signOut(auth);
+                setFirebaseUser(null);
+                setIsConnectedToCloud(false);
+                setUserInfo(null);
+            };
 
-                setSyncStatus('syncing');
-                const timeoutId = setTimeout(() => {
-                    saveToCloud(currentProject);
-                }, 5000); 
+            // Enhanced switch project to support Firestore
+            const switchToProject = async (projectId) => {
+                if (!isConnectedToCloud || !db) {
+                     // Local switch
+                     const target = projects.find(p => p.id === projectId);
+                     if (target) {
+                         setCurrentProject(target);
+                         localStorage.setItem('narrativeos-current-project-id', target.id);
+                     }
+                     return;
+                }
 
-                return () => clearTimeout(timeoutId);
-            }, [currentProject, isConnectedToCloud, gistId]);
-
-
-            const handleConnectCloud = async () => {
-                const token = prompt("Enter your GitHub Personal Access Token (with 'gist' scope):");
-                if (!token) return;
-                
                 setIsCloudLoading(true);
                 try {
-                    // 1. Verify Token
-                    const userRes = await fetch('https://api.github.com/user', {
-                        headers: { 'Authorization': `token ${token}` }
-                    });
-                    if (!userRes.ok) throw new Error('Invalid GitHub Token');
-                    const user = await userRes.json();
+                    // Fetch Book Metadata
+                    const bookRef = doc(db, "books", projectId);
+                    const bookSnap = await getDoc(bookRef);
                     
-                    localStorage.setItem('narrativeos-github-token', token);
-                    setGistToken(token);
-                    setUserInfo({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email });
-
-                    // 2. Find or Create "NarrativeOS Data" Gist
-                    const gistsRes = await fetch('https://api.github.com/gists', {
-                         headers: { 'Authorization': `token ${token}` }
-                    });
-                    const gists = await gistsRes.json();
-                    let targetGist = gists.find(g => g.description === 'NarrativeOS Data');
-
-                    if (!targetGist) {
-                        // Create New
-                        const createRes = await fetch('https://api.github.com/gists', {
-                            method: 'POST',
-                            headers: { 
-                                'Authorization': `token ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                description: "NarrativeOS Data",
-                                public: false,
-                                files: {
-                                    "README.md": { content: "Data storage for NarrativeOS. Do not edit manually." }
-                                }
-                            })
-                        });
-                        targetGist = await createRes.json();
+                    if (!bookSnap.exists()) {
+                        throw new Error("Book not found in cloud");
                     }
-
-                    setGistId(targetGist.id);
-                    localStorage.setItem('narrativeos-gist-id', targetGist.id);
-                    setIsConnectedToCloud(true); 
-
-                    // 3. Sync
-                    await syncFromCloud(targetGist.id, token);
                     
-                    alert('Connected to GitHub Gist! Your stories are safe.');
-
-                } catch (err) {
-                    console.error(err);
-                    alert('Failed to connect: ' + err.message);
+                    const bookData = bookSnap.data();
+                    
+                    // Fetch Chapters (Sub-collection)
+                    const chaptersRef = collection(db, "books", projectId, "chapters");
+                    const q = query(chaptersRef, orderBy("order_index"));
+                    const querySnapshot = await getDocs(q);
+                    
+                    const loadedChapters = [];
+                    querySnapshot.forEach((doc) => {
+                        loadedChapters.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Reconstruct Project Object for UI
+                    // Convert flat chapters list back to sections structure
+                    // bookData.sections should be an array of {id, name}
+                    
+                    let rehydratedSections = [];
+                    
+                    if (bookData.sections && Array.isArray(bookData.sections)) {
+                        // Use stored structure
+                        rehydratedSections = bookData.sections.map(secMeta => ({
+                            ...secMeta,
+                            chapters: loadedChapters.filter(c => c.sectionId === secMeta.id)
+                        }));
+                        
+                        // Handle orphaned chapters (legacy or bug)
+                        const orphans = loadedChapters.filter(c => !c.sectionId || !bookData.sections.find(s => s.id === c.sectionId));
+                        if (orphans.length > 0) {
+                             if (rehydratedSections.length > 0) rehydratedSections[0].chapters.push(...orphans);
+                             else rehydratedSections.push({ id: "default", name: "Manuscript", chapters: orphans });
+                        }
+                    } else {
+                        // Default fallback (single section)
+                        rehydratedSections = [
+                            {
+                                id: "main-section",
+                                name: "Manuscript",
+                                chapters: loadedChapters 
+                            }
+                        ];
+                    }
+                    
+                    const reconstructedProject = {
+                        id: bookSnap.id,
+                        ...bookData,
+                        sections: rehydratedSections,
+                        isCloud: true
+                    };
+                    
+                    setCurrentProject(reconstructedProject);
+                    localStorage.setItem('narrativeos-current-project-id', projectId);
+                } catch (e) {
+                    console.error("Error switching book:", e);
+                    alert("Error opening book: " + e.message);
                 } finally {
                     setIsCloudLoading(false);
                 }
             };
 
-            const syncFromCloud = async (id, token) => {
-                const effectiveToken = token || gistToken;
-                const effectiveId = id || gistId;
-                if (!effectiveToken || !effectiveId) return;
-
-                setSyncStatus('syncing');
-                try {
-                    const res = await fetch(`https://api.github.com/gists/${effectiveId}`, {
-                        headers: { 'Authorization': `token ${effectiveToken}` },
-                         cache: "no-store"
-                    });
-                    const gist = await res.json();
-                    
-                    const localProjects = ProjectStorage.getAllProjects();
-                    const updatedProjects = [...localProjects];
-                    let hasChanges = false;
-
-                    if (gist.files) {
-                        for (const [filename, file] of Object.entries(gist.files)) {
-                            if (!filename.startsWith('project_')) continue;
-
-                            let content = file.content;
-                            if (file.truncated) {
-                                const rawRes = await fetch(file.raw_url);
-                                content = await rawRes.text();
-                            }
-                            
-                            try {
-                                const projectData = JSON.parse(content);
-                                const localIndex = updatedProjects.findIndex(p => p.id === projectData.id);
-                                if (localIndex === -1) {
-                                    updatedProjects.push(projectData);
-                                    hasChanges = true;
-                                } else {
-                                    if (projectData.lastModified > (updatedProjects[localIndex].lastModified || 0)) {
-                                        updatedProjects[localIndex] = projectData;
-                                        hasChanges = true;
-                                    }
+            // Real-time Chapter Sync
+            useEffect(() => {
+                if (!currentProject || !db || !isConnectedToCloud || !selectedChapterId) return;
+                
+                // Find chapter in current structure
+                // We assume flat structure for now based on recent fetch, 
+                // but need to handle the fact that UI expects sections.
+                
+                const unsubscribe = onSnapshot(doc(db, "books", currentProject.id, "chapters", selectedChapterId), (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        const remoteContent = data.content;
+                        
+                        // Update local state without triggering a save loop
+                        setCurrentProject(prev => {
+                            if (!prev) return prev;
+                            const newProj = {...prev};
+                            // Deep find and update
+                            newProj.sections.forEach(s => {
+                                const ch = s.chapters.find(c => c.id === selectedChapterId);
+                                if (ch && ch.content !== remoteContent) {
+                                    ch.content = remoteContent;
                                 }
-                            } catch (e) {
-                                console.error("Error parsing project file", filename);
-                            }
-                        }
+                            });
+                            return newProj;
+                        });
                     }
+                });
+                
+                return () => unsubscribe();
+            }, [db, isConnectedToCloud, selectedChapterId, currentProject?.id]); // Note: dependency on currentProject.id is key
 
-                    if (hasChanges) {
-                         ProjectStorage.saveAllProjects(updatedProjects);
-                         setProjects(updatedProjects);
-                         if (currentProject) {
-                            const updated = updatedProjects.find(p => p.id === currentProject.id);
-                            if (updated) setCurrentProject(updated);
-                         }
-                    }
+            // Save Chapter changes to Firestore
+            const saveChapterToCloud = async (bookId, chapterId, content, title) => {
+                if (!db || !isConnectedToCloud) return;
+                
+                try {
+                    const chapterRef = doc(db, "books", bookId, "chapters", chapterId);
+                    const updatePayload = {
+                        content: content,
+                        last_updated: serverTimestamp()
+                    };
+                    if (title !== undefined && title !== null) updatePayload.title = title;
+
+                    await updateDoc(chapterRef, updatePayload);
                     setSyncStatus('saved');
                 } catch (e) {
-                    console.error("Sync error", e);
-                    setSyncStatus('error');
+                    console.error("Save failed", e);
+                    setSyncStatus('unsaved');
+                }
+            };
+            
+            // Override save function
+            const saveChapterContent = (content, title, subtitle) => {
+                if (!currentProject || !selectedSectionId || !selectedChapterId) return;
+                
+                const updatedProject = { ...currentProject };
+                const sectionIndex = updatedProject.sections.findIndex(s => s.id === selectedSectionId);
+                if (sectionIndex === -1) return;
+                
+                const chapterIndex = updatedProject.sections[sectionIndex].chapters.findIndex(c => c.id === selectedChapterId);
+                if (chapterIndex === -1) return;
+                
+                updatedProject.sections[sectionIndex].chapters[chapterIndex].content = content;
+                
+                // Update title and subtitle if provided
+                if (title !== null && title !== undefined) {
+                    updatedProject.sections[sectionIndex].chapters[chapterIndex].title = title;
+                }
+                if (subtitle !== null && subtitle !== undefined) {
+                    updatedProject.sections[sectionIndex].chapters[chapterIndex].subtitle = subtitle;
+                }
+                
+                updatedProject.lastModified = Date.now();
+                setCurrentProject(updatedProject);
+                
+                // Cloud Save
+                if (isConnectedToCloud && db) {
+                     setSyncStatus('syncing');
+                     // Debounce handled by UI usually, but we call direct here.
+                     // In prod, use a dedicated debounced function.
+                     saveChapterToCloud(currentProject.id, selectedChapterId, content, title);
+                } else {
+                    ProjectStorage.saveProject(updatedProject);
                 }
             };
 
-            const saveToCloud = async (project) => {
-               if (!isConnectedToCloud || !gistId) return;
+            const handleConnectCloud = () => setShowCloudModal(true);
 
-               setSyncStatus('syncing');
-               const fileName = `project_${project.id}.json`;
-               
-               try {
-                   await fetch(`https://api.github.com/gists/${gistId}`, {
-                       method: 'PATCH',
-                       headers: { 
-                           'Authorization': `token ${gistToken}`,
-                           'Content-Type': 'application/json' 
-                       },
-                       body: JSON.stringify({
-                           files: {
-                               [fileName]: {
-                                   content: JSON.stringify(project, null, 2)
-                               }
-                           }
-                       })
-                   });
-                   setSyncStatus('saved');
-               } catch (e) {
-                   console.error("Save error", e);
-                   setSyncStatus('unsaved');
-               }
-            };
-
-            // Aliases for compatibility
-            const handleConnectDrive = handleConnectCloud;
-            const saveToDrive = saveToCloud;
-            const isConnectedToDrive = isConnectedToCloud;
 
 
             // Hugging Face Models List
@@ -3197,49 +3213,34 @@
                 return section.chapters.find(c => c.id === selectedChapterId);
             };
             
-            // Save chapter content
-            const saveChapterContent = (content, title, subtitle) => {
-                if (!currentProject || !selectedSectionId || !selectedChapterId) return;
-                
-                const updatedProject = { ...currentProject };
-                const sectionIndex = updatedProject.sections.findIndex(s => s.id === selectedSectionId);
-                if (sectionIndex === -1) return;
-                
-                const chapterIndex = updatedProject.sections[sectionIndex].chapters.findIndex(c => c.id === selectedChapterId);
-                if (chapterIndex === -1) return;
-                
-                updatedProject.sections[sectionIndex].chapters[chapterIndex].content = content;
-                
-                // Update title and subtitle if provided
-                if (title !== null && title !== undefined) {
-                    updatedProject.sections[sectionIndex].chapters[chapterIndex].title = title;
-                }
-                if (subtitle !== null && subtitle !== undefined) {
-                    updatedProject.sections[sectionIndex].chapters[chapterIndex].subtitle = subtitle;
-                }
-                
-                updatedProject.lastModified = Date.now();
-                
-                setCurrentProject(updatedProject);
-                ProjectStorage.saveProject(updatedProject);
-            };
+            // Save chapter content handled by cloud-aware override above
             
             // Add new section
-            const addSection = (name) => {
+            const addSection = async (name) => {
                 if (!currentProject) return;
                 const newSection = {
                     id: `section-${Date.now()}`,
                     name: name,
                     chapters: []
                 };
+                
                 const updatedProject = { ...currentProject };
                 updatedProject.sections.push(newSection);
                 setCurrentProject(updatedProject);
-                ProjectStorage.saveProject(updatedProject);
+                
+                if (isConnectedToCloud && db && currentProject.isCloud) {
+                     const sectionsMeta = updatedProject.sections.map(s => ({ id: s.id, name: s.name }));
+                     try {
+                         const bookRef = doc(db, "books", currentProject.id);
+                         await updateDoc(bookRef, { sections: sectionsMeta });
+                     } catch(e) { console.error("Cloud section add error", e); }
+                } else {
+                    ProjectStorage.saveProject(updatedProject);
+                }
             };
             
             // Add new chapter
-            const addChapter = (sectionId) => {
+            const addChapter = async (sectionId) => {
                 if (!currentProject) return;
                 const section = currentProject.sections.find(s => s.id === sectionId);
                 if (!section) return;
@@ -3253,19 +3254,40 @@
                     status: 'draft',
                     targetWords: 2500,
                     characterTags: [],
-                    notes: ''
+                    notes: '',
+                    sectionId: sectionId,
+                    order_index: Date.now() 
                 };
                 
+                // Optimistic Update
                 const updatedProject = { ...currentProject };
                 const sectionIndex = updatedProject.sections.findIndex(s => s.id === sectionId);
                 updatedProject.sections[sectionIndex].chapters.push(newChapter);
                 setCurrentProject(updatedProject);
-                ProjectStorage.saveProject(updatedProject);
-                setSelectedChapterId(newChapter.id);
+                
+                if (isConnectedToCloud && db && currentProject.isCloud) {
+                    try {
+                         const chaptersRef = collection(db, "books", currentProject.id, "chapters");
+                         const { id, ...chapterData } = newChapter;
+                         const docRef = await addDoc(chaptersRef, {
+                             ...chapterData,
+                             last_updated: serverTimestamp()
+                         });
+                         
+                         // Update with real ID
+                         const finalProject = { ...updatedProject };
+                         finalProject.sections[sectionIndex].chapters[finalProject.sections[sectionIndex].chapters.length - 1].id = docRef.id;
+                         setCurrentProject(finalProject);
+                         setSelectedChapterId(docRef.id);
+                    } catch(e) { console.error("Cloud chapter add error", e); }
+                } else {
+                    ProjectStorage.saveProject(updatedProject);
+                    setSelectedChapterId(newChapter.id);
+                }
             };
             
             // Update chapter details
-            const updateChapter = (sectionId, chapterId, updates) => {
+            const updateChapter = async (sectionId, chapterId, updates) => {
                 if (!currentProject) return;
                 const updatedProject = { ...currentProject };
                 const sectionIndex = updatedProject.sections.findIndex(s => s.id === sectionId);
@@ -3280,7 +3302,18 @@
                 };
                 
                 setCurrentProject(updatedProject);
-                ProjectStorage.saveProject(updatedProject);
+                
+                if (isConnectedToCloud && db && currentProject.isCloud) {
+                    try {
+                        const chapterRef = doc(db, "books", currentProject.id, "chapters", chapterId);
+                        await updateDoc(chapterRef, {
+                            ...updates,
+                            last_updated: serverTimestamp()
+                        });
+                    } catch(e) { console.error("Cloud chapter update error", e); }
+                } else {
+                    ProjectStorage.saveProject(updatedProject);
+                }
             };
 
             // --- RENDERERS ---
@@ -4489,13 +4522,17 @@
                                         <div 
                                             key={project.id}
                                             onClick={() => {
-                                                const stored = ProjectStorage.getProject(project.id) || project;
-                                                const fresh = normalizeProject(stored);
-                                                setCurrentProject(fresh);
-                                                if (fresh.sections.length > 0) {
-                                                    setSelectedSectionId(fresh.sections[0].id);
-                                                    if (fresh.sections[0].chapters.length > 0) {
-                                                        setSelectedChapterId(fresh.sections[0].chapters[0].id);
+                                                if (project.isCloud) {
+                                                    switchToProject(project.id);
+                                                } else {
+                                                    const stored = ProjectStorage.getProject(project.id) || project;
+                                                    const fresh = normalizeProject(stored);
+                                                    setCurrentProject(fresh);
+                                                    if (fresh.sections.length > 0) {
+                                                        setSelectedSectionId(fresh.sections[0].id);
+                                                        if (fresh.sections[0].chapters.length > 0) {
+                                                            setSelectedChapterId(fresh.sections[0].chapters[0].id);
+                                                        }
                                                     }
                                                 }
                                                 setShowProjectModal(false);
@@ -4506,7 +4543,10 @@
                                                     : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
                                             }`}
                                         >
-                                            <h3 className="text-lg font-bold text-white mb-2">{project.name}</h3>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="text-lg font-bold text-white max-w-[80%] truncate">{project.name}</h3>
+                                                {project.isCloud && <Cloud className="w-4 h-4 text-emerald-400" />}
+                                            </div>
                                             <div className="flex items-center gap-4 text-xs text-slate-400 mb-2">
                                                 <span>{project.sections.length} section(s)</span>
                                                 <span>•</span>
@@ -4536,6 +4576,109 @@
                                     <Plus className="w-5 h-5" />
                                     Create New Project
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Cloud Connection Modal */}
+                {showCloudModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                        <div className="bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+                            <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Cloud className="w-5 h-5 text-indigo-500" /> 
+                                    Cloud Sync (Firebase)
+                                </h2>
+                                <button 
+                                    onClick={() => setShowCloudModal(false)}
+                                    className="text-slate-400 hover:text-white"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            <div className="p-6 space-y-6">
+                                {!firebaseConfig ? (
+                                    <div className="space-y-4">
+                                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-xs text-amber-200">
+                                            <p className="font-bold mb-1">Configuration Required</p>
+                                            To enable sync, please paste your Firebase Configuration object below.
+                                        </div>
+                                        <textarea
+                                            placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "..."}'
+                                            className="w-full h-32 bg-black/50 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
+                                            id="firebase-config-input"
+                                        ></textarea>
+                                        <button
+                                            onClick={() => {
+                                                const input = document.getElementById('firebase-config-input').value;
+                                                try {
+                                                    const config = JSON.parse(input);
+                                                    setFirebaseConfig(config);
+                                                    localStorage.setItem('narrativeos-firebase-config', JSON.stringify(config));
+                                                } catch (e) {
+                                                    alert("Invalid JSON format");
+                                                }
+                                            }}
+                                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm"
+                                        >
+                                            Save Configuration
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {!firebaseUser ? (
+                                            <div className="text-center">
+                                                <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <User className="w-8 h-8 text-slate-500" />
+                                                </div>
+                                                <h3 className="text-lg font-bold text-white mb-2">Sign In</h3>
+                                                <p className="text-sm text-slate-400 mb-6">Connect to sync your novels across devices.</p>
+                                                
+                                                <button
+                                                    onClick={handleGoogleLogin}
+                                                    className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                                                    Sign in with Google
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center">
+                                                <img src={firebaseUser.photoURL} alt={firebaseUser.displayName} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-indigo-500" />
+                                                <h3 className="text-lg font-bold text-white mb-1">{firebaseUser.displayName}</h3>
+                                                <p className="text-sm text-slate-400 mb-6">{firebaseUser.email}</p>
+                                                
+                                                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-6 flex items-center justify-center gap-2">
+                                                    <Check className="w-4 h-4 text-emerald-500" />
+                                                    <span className="text-sm text-emerald-400 font-medium">Cloud Sync Active</span>
+                                                </div>
+                                                
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <LogOut className="w-4 h-4" /> Sign Out
+                                                </button>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="border-t border-slate-800 pt-4 mt-6">
+                                             <button 
+                                                onClick={() => {
+                                                    if(confirm("Clear configuration?")) {
+                                                        setFirebaseConfig(null);
+                                                        localStorage.removeItem('narrativeos-firebase-config');
+                                                    }
+                                                }}
+                                                className="text-xs text-red-400 hover:text-red-300 underline"
+                                             >
+                                                Reset Configuration
+                                             </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

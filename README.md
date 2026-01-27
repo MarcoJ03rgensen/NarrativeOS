@@ -1,13 +1,50 @@
 # Narrative - Creative Writing Platform
 
-A distraction-free, browser-based creative writing environment with AI assistance and GitHub Gist sync.
+A distraction-free, browser-based creative writing environment with AI assistance and Firebase Cloud sync.
 
 ## Features
 - **Distraction-Free Editor**: Clean interface focused on writing.
 - **AI Creative Assistant**: Integrated Google Gemini AI to help expand scenes, describe atmosphere, or overcome writer's block. This is a free site with no adds - you need your own api-key
-- **GitHub Sync**: Keep your work safe and accessible across devices using GitHub Gists.
+- **Cloud Sync**: Keep your work safe and accessible across devices using Google Firebase (Firestore).
 - **World Bible**: Track characters, locations, and lore.
 - **Analysis Tools**: Pacing alerts, "Show, Don't Tell" detection, and rhythm analysis.
+
+## How to Enable Cloud Sync (Firebase)
+
+Narrative uses Google Firebase for real-time cloud storage. You need to create a free Firebase project.
+
+1. **Go to Firebase Console**
+   Visit [https://console.firebase.google.com/](https://console.firebase.google.com/).
+
+2. **Create a Project**
+   - Click "Add project" and follow the steps.
+   - Disable Google Analytics if you want a simpler setup.
+
+3. **Enable Firestore Database**
+   - In your project dashboard, go to **Build > Firestore Database**.
+   - Click **Create Database**.
+   - Select a location (e.g., `nam5` or `eur3`).
+   - Start in **Test Mode** (or configure rules strictly later).
+
+4. **Enable Authentication**
+   - Go to **Build > Authentication**.
+   - Click **Get Started**.
+   - Select **Google** from the providers list and enable it.
+   - Save.
+
+5. **Get Configuration**
+   - Click the **Gear icon** (Project Settings) near the top left.
+   - Scroll down to "Your apps".
+   - Click the **Web icon** (`</>`) to add a web app.
+   - Register the app (you don't need Firebase Hosting).
+   - You will see a `firebaseConfig` object code block.
+
+6. **Connect Narrative**
+   - Copy the content inside the `firebaseConfig` variable (the part starting with `{ apiKey: ... }`).
+   - Open Narrative.
+   - Click the **Cloud Icon** in the sidebar.
+   - Paste the configuration JSON into the box.
+   - Click "Save Configuration" and then "Sign in with Google".
 
 ## How to Enable AI Features (Free)
 
