@@ -60,7 +60,7 @@
         "Character relationship mapping",
         "Interactive timeline builder",
         "Story beat suggestions",
-        "GitHub Gist cloud sync",
+        "Firebase Cloud Sync",
         "Real-time word count tracking",
         "Daily writing statistics"
       ]
@@ -409,10 +409,6 @@
             );
         };
 
-        // --- GITHUB CONFIGURATION ---
-        // GitHub Gist backup is enabled.
-        // Users must provide their own Personal Access Token.
-
         // --- EDITOR COMPONENTS ---
 
         const Tooltip = ({ children, text }) => (
@@ -445,7 +441,33 @@
 
         const Divider = () => <div className="w-px h-6 bg-white/10 mx-2 self-center"></div>;
 
-        function WordEditor({ initialContent, onStatsUpdate, onContentChange, projectName, geminiApiKey, setGeminiApiKey, availableModels, selectedModel, setSelectedModel, aiProvider, setAiProvider, hfToken, setHfToken, hfModel, setHfModel, HF_MODELS, githubToken, setGithubToken, githubModel, setGithubModel, GITHUB_MODELS, isConnectedToDrive, onConnectDrive, userInfo, setUserInfo, projectDriveFileId }) {
+        function WordEditor({ 
+            initialContent, 
+            onStatsUpdate, 
+            onContentChange, 
+            projectName, 
+            geminiApiKey, 
+            setGeminiApiKey, 
+            availableModels, 
+            selectedModel, 
+            setSelectedModel, 
+            aiProvider, 
+            setAiProvider, 
+            hfToken, 
+            setHfToken, 
+            hfModel, 
+            setHfModel, 
+            HF_MODELS, 
+            githubToken, 
+            setGithubToken, 
+            githubModel, 
+            setGithubModel, 
+            GITHUB_MODELS, 
+            isConnectedToCloud, // Changed from isConnectedToDrive
+            onConnectCloud,     // Changed from onConnectDrive
+            userInfo, 
+            setUserInfo 
+        }) {
           const [content, setContent] = useState(initialContent || '');
           const [fileName, setFileName] = useState(projectName || 'Untitled Project');
           const [isDirty, setIsDirty] = useState(false);
@@ -968,40 +990,16 @@
                   </div>
 
                   <button 
-                    onClick={() => setShowCloudModal(true)}
+                    onClick={onConnectCloud}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg ${
-                      isConnectedToDrive 
+                      isConnectedToCloud 
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' 
                         : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    <Cloud className="w-4 h-4" />
-                    <span className="hidden sm:inline">{isConnectedToDrive ? 'Synced' : 'Connect'}</span>
+                    {isConnectedToCloud ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
+                    <span className="hidden sm:inline">{isConnectedToCloud ? 'Cloud Synced' : 'Connect Cloud'}</span>
                   </button>
-
-                  {isConnectedToDrive && (
-                    <>
-                      {projectDriveFileId ? (
-                        <button 
-                          onClick={() => window.open(`https://drive.google.com/file/d/${projectDriveFileId}/view`, '_blank')}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
-                          title="Open this Gist in GitHub"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span className="hidden sm:inline">View in Drive</span>
-                        </button>
-                      ) : (
-                        <button 
-                          disabled
-                          className="flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg bg-gray-500/20 text-gray-400 border border-gray-500/30 cursor-not-allowed"
-                          title="Project is syncing to Drive..."
-                        >
-                          <Cloud className="w-4 h-4" />
-                          <span className="hidden sm:inline">Syncing...</span>
-                        </button>
-                      )}
-                    </>
-                  )}
                   
                   <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-sm font-bold shadow-md ring-2 ring-white/10 cursor-pointer hover:scale-105 transition-transform" title={userInfo ? `Signed in as ${userInfo.displayName} (${userInfo.emailAddress})` : 'Not signed in'}>
                     {userInfo ? (userInfo.photoLink ? <img src={userInfo.photoLink} className="w-full h-full rounded-full" alt="User" /> : userInfo.displayName.charAt(0)) : <img src="N.svg" alt="Narrative" className="w-6 h-6" />}
@@ -1011,20 +1009,20 @@
               )}
 
               {/* --- Reconnection Banner --- */}
-              {!isConnectedToDrive && !focusMode && (
+              {!isConnectedToCloud && !focusMode && (
               <div className="bg-amber-500/10 border-b border-amber-500/30 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top">
                 <div className="flex items-center gap-3">
                   <CloudOff className="w-5 h-5 text-amber-400" />
                   <div>
-                    <p className="text-sm font-medium text-amber-200">Not connected to GitHub</p>
-                    <p className="text-xs text-amber-300/80">Your projects are saved locally. Connect to backup to the cloud.</p>
+                    <p className="text-sm font-medium text-amber-200">Offline Mode</p>
+                    <p className="text-xs text-amber-300/80">Projects are saved locally. Connect to sync across devices.</p>
                   </div>
                 </div>
                 <button 
-                  onClick={onConnectDrive}
+                  onClick={onConnectCloud}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition-colors flex-shrink-0"
                 >
-                  Reconnect Now
+                  Connect Cloud
                 </button>
               </div>
               )}
@@ -1233,27 +1231,28 @@
                         {renderVisualOverlay()}
                         
                         {/* Sign-in Overlay */}
-                        {!isConnectedToDrive && (
+                        {!isConnectedToCloud && (
                           <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex items-center justify-center">
                             <div className="text-center max-w-md p-8">
                               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
                                 <Cloud className="w-8 h-8 text-white" />
                               </div>
-                              <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign in to Start Writing</h2>
-                              <p className="text-gray-600 mb-6">Connect your GitHub Account to save your work securely and access it from anywhere.</p>
+                              <h2 className="text-2xl font-bold text-gray-900 mb-3">Sync to Cloud</h2>
+                              <p className="text-gray-600 mb-6">Connect to Firebase to enable cloud save, multi-device access, and safe backups.</p>
                               <button 
-                                onClick={onConnectDrive}
+                                onClick={onConnectCloud}
                                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg transition-all hover:scale-105 flex items-center gap-2 mx-auto"
                               >
                                 <Cloud className="w-5 h-5" />
-                                Sign in with Google
+                                Connect to Cloud
                               </button>
+                              <p className="mt-4 text-xs text-gray-400">Or continue offline (changes saved to browser)</p>
                             </div>
                           </div>
                         )}
                     <div
                       ref={editorRef}
-                      contentEditable={isConnectedToDrive}
+                      contentEditable={true} // Allow offline editing
                       suppressContentEditableWarning
                       className="outline-none min-h-full text-base leading-relaxed text-left text-black empty:before:content-[attr(placeholder)] empty:before:text-slate-400 selection:bg-purple-200 selection:text-purple-900"
                       onInput={handleInput}
@@ -2373,10 +2372,9 @@
             const [db, setDb] = useState(null);
             const [auth, setAuth] = useState(null);
 
-            // Legacy Aliases for UI compatibility
-            const handleConnectDrive = () => setShowCloudModal(true);
-            const isConnectedToDrive = isConnectedToCloud;
-
+            // Cloud Connections
+            const handleConnectCloud = () => setShowCloudModal(true);
+            
             // Initialize Firebase
             useEffect(() => {
                 if (firebaseConfig) {
@@ -2633,10 +2631,6 @@
                     ProjectStorage.saveProject(updatedProject);
                 }
             };
-
-            const handleConnectCloud = () => setShowCloudModal(true);
-
-
 
             // Hugging Face Models List
             const HF_MODELS = [
@@ -3502,11 +3496,10 @@
                             githubModel={githubModel}
                             setGithubModel={setGithubModel}
                             GITHUB_MODELS={GITHUB_MODELS}
-                            isConnectedToDrive={isConnectedToDrive}
-                            onConnectDrive={handleConnectDrive}
+                            isConnectedToCloud={isConnectedToCloud}
+                            onConnectCloud={handleConnectCloud}
                             userInfo={userInfo}
                             setUserInfo={setUserInfo}
-                            projectDriveFileId={currentProject.driveFileId}
                             onContentChange={(content) => saveChapterContent(content)}
                             onStatsUpdate={(w, c) => {
                                 setGlobalWordCount(w);
@@ -4604,22 +4597,62 @@
                                     <div className="space-y-4">
                                         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-xs text-amber-200">
                                             <p className="font-bold mb-1">Configuration Required</p>
-                                            To enable sync, please paste your Firebase Configuration object below.
+                                            <p>To enable sync, please paste your Firebase Configuration details below.</p>
+                                            <p className="mt-1 opacity-75">You can paste the raw JS code block (e.g., <code>const firebaseConfig = ...</code>) or the JSON object.</p>
                                         </div>
                                         <textarea
-                                            placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "..."}'
-                                            className="w-full h-32 bg-black/50 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
+                                            placeholder={'const firebaseConfig = {\n  apiKey: "...",\n  authDomain: "...",\n  projectId: "..."\n};'}
+                                            className="w-full h-40 bg-black/50 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
                                             id="firebase-config-input"
                                         ></textarea>
                                         <button
                                             onClick={() => {
                                                 const input = document.getElementById('firebase-config-input').value;
+                                                
+                                                const parseConfig = (str) => {
+                                                    try {
+                                                        // 1. Locate the object
+                                                        let clean = str.trim();
+                                                        const start = clean.indexOf('{');
+                                                        const end = clean.lastIndexOf('}');
+                                                        if (start === -1 || end === -1) throw new Error("No config object found in text");
+                                                        
+                                                        let objectBody = clean.substring(start, end + 1);
+                                                        
+                                                        // 2. Remove comments
+                                                        objectBody = objectBody.replace(/\/\/.*$/gm, ""); // Single line
+                                                        objectBody = objectBody.replace(/\/\*[\s\S]*?\*\//g, ""); // Block
+                                                        
+                                                        // 3. Try strict JSON parse first (in case it was already valid)
+                                                        try { return JSON.parse(objectBody); } catch(e) {}
+                                                        
+                                                        // 4. Relaxed Parsing (Fix keys and quotes)
+                                                        // Quote unquoted keys
+                                                        let fixedJson = objectBody.replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":');
+                                                        // Replace single quoted values with double quoted
+                                                        fixedJson = fixedJson.replace(/:\s*'([^']+)'/g, ': "$1"');
+                                                        // Remove trailing commas
+                                                        fixedJson = fixedJson.replace(/,(\s*})/g, '$1');
+                                                        
+                                                        return JSON.parse(fixedJson);
+                                                    } catch (e) {
+                                                        console.error("Parsing error", e);
+                                                        throw new Error("Could not automatically parse the config. Please ensure it is valid JSON or a standard JS object.");
+                                                    }
+                                                };
+
                                                 try {
-                                                    const config = JSON.parse(input);
+                                                    const config = parseConfig(input);
+                                                    
+                                                    // Basic validation
+                                                    if (!config.apiKey || !config.projectId) {
+                                                        throw new Error("Config appears incomplete (missing apiKey or projectId)");
+                                                    }
+                                                    
                                                     setFirebaseConfig(config);
                                                     localStorage.setItem('narrativeos-firebase-config', JSON.stringify(config));
                                                 } catch (e) {
-                                                    alert("Invalid JSON format");
+                                                    alert("Configuration Error: " + e.message);
                                                 }
                                             }}
                                             className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm"

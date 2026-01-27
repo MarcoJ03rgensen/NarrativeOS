@@ -93,9 +93,11 @@ You can use models like GPT-4o, Llama 3.1, and Phi-3 via GitHub Models.
 
 **Note:** GitHub Models (via Azure AI) may also have CORS restrictions similar to Hugging Face when accessed directly from a browser.
 
-## GitHub Gist Integration
+## GitHub Gist Integration (Legacy)
 
-To enable cloud sync, the application uses GitHub Gists to store your projects as JSON files.
+*Note: This feature has been superseded by the Firebase Cloud Sync integration. It is recommended to migrate your workflow to Firebase as described above.*
+
+To enable legacy cloud sync (read-only mode for old projects), the application uses GitHub Gists to store your projects as JSON files.
 
 1.  **Get a Token**: Go to [GitHub Settings > Developer Settings > Personal Access Tokens (Classic)](https://github.com/settings/tokens).
 2.  Generate a new token with the **`gist`** scope.
