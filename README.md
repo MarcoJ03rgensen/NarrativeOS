@@ -1,11 +1,11 @@
 # Narrative - Creative Writing Platform
 
-A distraction-free, browser-based creative writing environment with AI assistance and Google Drive sync.
+A distraction-free, browser-based creative writing environment with AI assistance and GitHub Gist sync.
 
 ## Features
 - **Distraction-Free Editor**: Clean interface focused on writing.
 - **AI Creative Assistant**: Integrated Google Gemini AI to help expand scenes, describe atmosphere, or overcome writer's block. This is a free site with no adds - you need your own api-key
-- **Google Drive Sync**: Keep your work safe and accessible across devices.
+- **GitHub Sync**: Keep your work safe and accessible across devices using GitHub Gists.
 - **World Bible**: Track characters, locations, and lore.
 - **Analysis Tools**: Pacing alerts, "Show, Don't Tell" detection, and rhythm analysis.
 
@@ -56,9 +56,14 @@ You can use models like GPT-4o, Llama 3.1, and Phi-3 via GitHub Models.
 
 **Note:** GitHub Models (via Azure AI) may also have CORS restrictions similar to Hugging Face when accessed directly from a browser.
 
-## Google Drive Integration
+## GitHub Gist Integration
 
-To enable cloud sync, the application uses a default configuration. If you are hosting this yourself, you may need to configure your own Google Cloud Project credentials in the code.
+To enable cloud sync, the application uses GitHub Gists to store your projects as JSON files.
+
+1.  **Get a Token**: Go to [GitHub Settings > Developer Settings > Personal Access Tokens (Classic)](https://github.com/settings/tokens).
+2.  Generate a new token with the **`gist`** scope.
+3.  In Narrative, click "Connect" in the cloud menu and enter your token.
+4.  Your data will be stored in a private Gist named "NarrativeOS Data".
 
 ## License
 

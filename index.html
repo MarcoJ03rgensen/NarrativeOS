@@ -60,7 +60,7 @@
         "Character relationship mapping",
         "Interactive timeline builder",
         "Story beat suggestions",
-        "Google Drive cloud sync",
+        "GitHub Gist cloud sync",
         "Real-time word count tracking",
         "Daily writing statistics"
       ]
@@ -69,8 +69,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
     <style>
         /* Custom scrollbar for webkit browsers */
         .scrollbar-thin::-webkit-scrollbar {
@@ -402,24 +400,9 @@
             );
         };
 
-        // --- GOOGLE DRIVE CONFIGURATION ---
-        // GUIDE FOR: https://marcoj03rgensen.github.io/NarrativeOS/
-        // 1. Go to Google Cloud Console: https://console.cloud.google.com/
-        // 2. Create a new project (e.g., "NarrativeOS").
-        // 3. Enable "Google Drive API" in "APIs & Services" > "Library".
-        // 4. Configure "OAuth Consent Screen" (User Type: External).
-        // 5. Create Credentials > OAuth Client ID (Application Type: Web application).
-        //    - Authorized JavaScript origins: https://marcoj03rgensen.github.io  (EXACTLY THIS, NO SLASH AT END)
-        //    - Authorized redirect URIs:      https://marcoj03rgensen.github.io/NarrativeOS/
-        // 6. Create Credentials > API Key.
-        
-        // TODO: PASTE YOUR KEYS BELOW
-        const CLIENT_ID = '692298824206-ffqjkrgits24tqsk6h22tfcb2gv1m0ip.apps.googleusercontent.com'; 
-        const API_KEY = 'AIzaSyCBwO7tdzYM7B8dJE0BfTz_2WzKNSBhKQg'; 
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-        const DRIVE_FOLDER_NAME = 'Narrative Projects';
-        const LEGACY_DRIVE_FOLDER_NAME = 'NarrativeOS Projects';
+        // --- GITHUB CONFIGURATION ---
+        // GitHub Gist backup is enabled.
+        // Users must provide their own Personal Access Token.
 
         // --- EDITOR COMPONENTS ---
 
@@ -993,7 +976,7 @@
                         <button 
                           onClick={() => window.open(`https://drive.google.com/file/d/${projectDriveFileId}/view`, '_blank')}
                           className="flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
-                          title="Open this project file in Google Drive"
+                          title="Open this Gist in GitHub"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span className="hidden sm:inline">View in Drive</span>
@@ -1024,7 +1007,7 @@
                 <div className="flex items-center gap-3">
                   <CloudOff className="w-5 h-5 text-amber-400" />
                   <div>
-                    <p className="text-sm font-medium text-amber-200">Not connected to Google Drive</p>
+                    <p className="text-sm font-medium text-amber-200">Not connected to GitHub</p>
                     <p className="text-xs text-amber-300/80">Your projects are saved locally. Connect to backup to the cloud.</p>
                   </div>
                 </div>
@@ -1248,7 +1231,7 @@
                                 <Cloud className="w-8 h-8 text-white" />
                               </div>
                               <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign in to Start Writing</h2>
-                              <p className="text-gray-600 mb-6">Connect your Google Drive to save your work securely and access it from anywhere.</p>
+                              <p className="text-gray-600 mb-6">Connect your GitHub Account to save your work securely and access it from anywhere.</p>
                               <button 
                                 onClick={onConnectDrive}
                                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg transition-all hover:scale-105 flex items-center gap-2 mx-auto"
@@ -1572,23 +1555,21 @@
                          <div className="bg-purple-500/20 p-2 rounded-xl shadow-inner border border-purple-500/20">
                             <Cloud className="w-6 h-6 text-purple-400" />
                          </div>
-                         <h3 className="text-xl font-bold text-white">Sync Settings</h3>
+                         <h3 className="text-xl font-bold text-white">Cloud Sync (GitHub)</h3>
                       </div>
                       <button 
                         onClick={() => setShowCloudModal(false)} 
                         className="text-gray-500 hover:text-white p-1 hover:bg-white/10 rounded-full transition-colors"
                       >
-                        <MoreVertical className="w-5 h-5" />
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                     
                     <p className="text-gray-400 mb-8 leading-relaxed">
-                      This application connects directly to <strong>your personal Google Drive</strong>. 
-                      Your work is saved to a folder named 'Narrative Projects' in your own cloud storage.
+                      Connect your <strong>GitHub Account</strong> to sync your stories.
+                      Data is stored in a private <strong>Gist</strong>.
                       <br/><br/>
-                      <span className="text-xs text-gray-500">Privacy Note: No data is sent to any external servers. The app only has access to files it creates.</span>
-                      <br/>
-                      <span className="text-xs text-yellow-500">Dev Note: You must configure CLIENT_ID and API_KEY in the code for this to work.</span>
+                      <span className="text-xs text-gray-500">Requires a Personal Access Token with <code>gist</code> scope.</span>
                     </p>
 
                     {!isConnectedToDrive ? (
@@ -1597,10 +1578,10 @@
                           onClick={handleConnectDrive}
                           className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-purple-900/50 transition-all hover:scale-[1.02] flex justify-center items-center group"
                          >
-                           <span className="group-hover:animate-pulse mr-2">⚡</span> Connect Account
+                           <span className="group-hover:animate-pulse mr-2">⚡</span> Connect GitHub
                          </button>
                          <p className="text-xs text-center text-gray-500">
-                           Secured by standard OAuth 2.0 protocols.
+                           <a href="https://github.com/settings/tokens" className="underline hover:text-gray-400" target="_blank">Generate Token Here</a>
                          </p>
                       </div>
                     ) : (
@@ -1610,21 +1591,18 @@
                          </div>
                          <p className="text-lg font-bold text-white">Sync Active</p>
                          {userInfo && <p className="text-sm text-emerald-300 mt-1">Connected as {userInfo.displayName}</p>}
-                         <p className="text-sm text-gray-400 mt-1">Folder: Narrative Projects</p>
+                         <p className="text-sm text-gray-400 mt-1">Storage: GitHub Gist</p>
                          <button 
                            onClick={() => { 
                                setIsConnectedToDrive(false); 
                                setUserInfo(null); 
                                setShowCloudModal(false);
+                               setGistToken('');
+                               setGistId(null);
                                localStorage.removeItem('narrativeos-connected');
                                localStorage.removeItem('narrativeos-user-info');
-                               localStorage.removeItem('narrativeos-drive-folder');
-                               // Revoke token
-                               const token = gapi.client.getToken();
-                               if (token !== null) {
-                                   google.accounts.oauth2.revoke(token.access_token);
-                                   gapi.client.setToken('');
-                               }
+                               localStorage.removeItem('narrativeos-github-token');
+                               localStorage.removeItem('narrativeos-gist-id');
                            }}
                            className="mt-6 text-rose-400 text-sm font-semibold hover:text-rose-300 transition-colors"
                          >
@@ -2439,441 +2417,209 @@
                 });
             };
 
-            // Google Drive State
-            const [tokenClient, setTokenClient] = useState(null);
-            const [gapiInited, setGapiInited] = useState(false);
-            const [gisInited, setGisInited] = useState(false);
-            const [driveFolderId, setDriveFolderId] = useState(() => localStorage.getItem('narrativeos-drive-folder') || null);
-            const [isConnectedToDrive, setIsConnectedToDrive] = useState(() => localStorage.getItem('narrativeos-connected') === 'true');
-            const [syncStatus, setSyncStatus] = useState('saved'); // saved, syncing, error, unsaved
-            const [isDriveLoading, setIsDriveLoading] = useState(false);
+            // Cloud Sync State
+            // Cloud Sync State (GitHub)
+            const [gistToken, setGistToken] = useState(() => localStorage.getItem('narrativeos-github-token') || '');
+            const [gistId, setGistId] = useState(() => localStorage.getItem('narrativeos-gist-id') || null);
+            const [isConnectedToCloud, setIsConnectedToCloud] = useState(() => !!localStorage.getItem('narrativeos-github-token'));
+            const [syncStatus, setSyncStatus] = useState('saved'); 
+            const [isCloudLoading, setIsCloudLoading] = useState(false);
             const [userInfo, setUserInfo] = useState(() => {
                 const stored = localStorage.getItem('narrativeos-user-info');
                 return stored ? JSON.parse(stored) : null;
             });
 
-            // Initialize Google Drive API
+            // Initialize / Verify Token
             useEffect(() => {
-                const initGapi = () => {
-                    if (typeof gapi === 'undefined') {
-                        setTimeout(initGapi, 500);
-                        return;
-                    }
-                    gapi.load('client', async () => {
-                        try {
-                            await gapi.client.init({
-                                apiKey: API_KEY,
-                                discoveryDocs: [DISCOVERY_DOC],
-                            });
-                            setGapiInited(true);
-                        } catch (error) {
-                            console.error("Error initializing GAPI client:", error);
-                        }
+                if (gistToken) {
+                    setIsConnectedToCloud(true);
+                    fetch('https://api.github.com/user', {
+                        headers: { 'Authorization': `token ${gistToken}` }
+                    })
+                    .then(res => {
+                        if (res.ok) return res.json();
+                        throw new Error('Invalid token');
+                    })
+                    .then(user => {
+                        setUserInfo({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email });
+                        localStorage.setItem('narrativeos-user-info', JSON.stringify({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email }));
+                    })
+                    .catch(() => {
+                        setIsConnectedToCloud(false);
+                        localStorage.removeItem('narrativeos-github-token');
+                        setGistToken('');
                     });
-                };
-
-                const initGis = () => {
-                    if (typeof google === 'undefined') {
-                        setTimeout(initGis, 500);
-                        return;
-                    }
-                    try {
-                        const client = google.accounts.oauth2.initTokenClient({
-                            client_id: CLIENT_ID,
-                            scope: SCOPES,
-                            callback: '', // defined later
-                        });
-                        setTokenClient(client);
-                        setGisInited(true);
-                    } catch (error) {
-                        console.error("Error initializing GIS client:", error);
-                    }
-                };
-
-                initGapi();
-                initGis();
-            }, []);
-
-            // Check for existing token on mount
-            useEffect(() => {
-                if (gapiInited && gisInited) {
-                    const token = gapi.client.getToken();
-                    if (token && token.access_token) {
-                        setIsConnectedToDrive(true);
-                        // Fetch user info if we have a token
-                        gapi.client.drive.about.get({fields: 'user'}).then(resp => {
-                            setUserInfo(resp.result.user);
-                            localStorage.setItem('narrativeos-user-info', JSON.stringify(resp.result.user));
-                        }).catch(err => {
-                            console.error('Failed to fetch user info:', err);
-                        });
-                    }
+                } else {
+                    setIsConnectedToCloud(false);
                 }
-            }, [gapiInited, gisInited]);
+            }, [gistToken]);
 
-            // Auto-Sync Current Project to Drive
+            // Auto-Sync Current Project to Cloud
             useEffect(() => {
-                if (!currentProject || !isConnectedToDrive || !driveFolderId) return;
+                if (!currentProject || !isConnectedToCloud || !gistId) return;
 
-                // Set status to syncing immediately when project changes
                 setSyncStatus('syncing');
-
                 const timeoutId = setTimeout(() => {
-                    saveToDrive(currentProject);
-                }, 2000); // Debounce 2s
+                    saveToCloud(currentProject);
+                }, 5000); 
 
                 return () => clearTimeout(timeoutId);
-            }, [currentProject, isConnectedToDrive, driveFolderId]);
+            }, [currentProject, isConnectedToCloud, gistId]);
 
-            // Check for existing valid token on mount (no popup, just check)
-            useEffect(() => {
-                if (!gapiInited || !gisInited) return;
-                
-                const token = gapi.client.getToken();
-                if (token && token.access_token) {
-                    // We have a valid token, mark as connected
-                    setIsConnectedToDrive(true);
-                    localStorage.setItem('narrativeos-connected', 'true');
-                } else {
-                    // No valid token, mark as disconnected
-                    setIsConnectedToDrive(false);
-                    localStorage.removeItem('narrativeos-connected');
-                }
-            }, [gapiInited, gisInited]);
 
-            const handleConnectDrive = async () => {
-                if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE' || API_KEY === 'YOUR_API_KEY_HERE') {
-                    alert('Please configure your Google Cloud CLIENT_ID and API_KEY in the code to enable Google Drive integration.');
-                    return;
-                }
-                if (!tokenClient) {
-                    alert('Google Sign-In client not initialized. Please check your internet connection or API keys.');
-                    return;
-                }
+            const handleConnectCloud = async () => {
+                const token = prompt("Enter your GitHub Personal Access Token (with 'gist' scope):");
+                if (!token) return;
                 
-                setIsDriveLoading(true);
-                
+                setIsCloudLoading(true);
                 try {
-                    await Promise.race([
-                        new Promise((resolve, reject) => {
-                            tokenClient.callback = async (resp) => {
-                                try {
-                                    if (resp.error !== undefined) {
-                                        reject(resp);
-                                        return;
-                                    }
-                                    setIsConnectedToDrive(true);
-                                    localStorage.setItem('narrativeos-connected', 'true');
-                                    
-                                    // Fetch user info to confirm identity
-                                    try {
-                                        const about = await gapi.client.drive.about.get({fields: 'user'});
-                                        setUserInfo(about.result.user);
-                                        localStorage.setItem('narrativeos-user-info', JSON.stringify(about.result.user));
-                                    } catch (e) {
-                                        console.error("Could not fetch user info", e);
-                                    }
+                    // 1. Verify Token
+                    const userRes = await fetch('https://api.github.com/user', {
+                        headers: { 'Authorization': `token ${token}` }
+                    });
+                    if (!userRes.ok) throw new Error('Invalid GitHub Token');
+                    const user = await userRes.json();
+                    
+                    localStorage.setItem('narrativeos-github-token', token);
+                    setGistToken(token);
+                    setUserInfo({ displayName: user.login, photoLink: user.avatar_url, emailAddress: user.email });
 
-                                    await ensureProjectFolder();
-                                    resolve();
-                                } catch (err) {
-                                    reject(err);
+                    // 2. Find or Create "NarrativeOS Data" Gist
+                    const gistsRes = await fetch('https://api.github.com/gists', {
+                         headers: { 'Authorization': `token ${token}` }
+                    });
+                    const gists = await gistsRes.json();
+                    let targetGist = gists.find(g => g.description === 'NarrativeOS Data');
+
+                    if (!targetGist) {
+                        // Create New
+                        const createRes = await fetch('https://api.github.com/gists', {
+                            method: 'POST',
+                            headers: { 
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                description: "NarrativeOS Data",
+                                public: false,
+                                files: {
+                                    "README.md": { content: "Data storage for NarrativeOS. Do not edit manually." }
                                 }
-                            };
-
-                            try {
-                                // Request with consent and access_type offline for refresh token
-                                const hasToken = gapi.client.getToken() !== null;
-                                tokenClient.requestAccessToken({
-                                    prompt: hasToken ? '' : 'consent'
-                                });
-                            } catch (err) {
-                                reject(new Error('Popup blocked or auth failed'));
-                            }
-                        }),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - popup may be blocked')), 30000))
-                    ]);
-                } catch (err) {
-                    console.error('Drive connection failed:', err);
-                    if (err.message && err.message.includes('popup')) {
-                        alert('Could not connect to Google Drive. Please allow popups for this site and try again.');
-                    } else {
-                        alert('Failed to connect to Google Drive. Please try again.');
+                            })
+                        });
+                        targetGist = await createRes.json();
                     }
+
+                    setGistId(targetGist.id);
+                    localStorage.setItem('narrativeos-gist-id', targetGist.id);
+                    setIsConnectedToCloud(true); 
+
+                    // 3. Sync
+                    await syncFromCloud(targetGist.id, token);
+                    
+                    alert('Connected to GitHub Gist! Your stories are safe.');
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to connect: ' + err.message);
                 } finally {
-                    setIsDriveLoading(false);
+                    setIsCloudLoading(false);
                 }
             };
 
-            const ensureProjectFolder = async () => {
-                try {
-                    // Check if folder exists
-                    const response = await gapi.client.drive.files.list({
-                        q: "mimeType='application/vnd.google-apps.folder' and trashed=false and (name='" + DRIVE_FOLDER_NAME + "' or name='" + LEGACY_DRIVE_FOLDER_NAME + "')",
-                        fields: 'files(id, name)',
-                    });
-                    
-                    let folderId;
-                    if (response.result.files && response.result.files.length > 0) {
-                        const targetFolder = response.result.files.find(f => f.name === DRIVE_FOLDER_NAME) || response.result.files[0];
-                        folderId = targetFolder.id;
-                    } else {
-                        // Create folder with new branding
-                        const fileMetadata = {
-                            'name': DRIVE_FOLDER_NAME,
-                            'mimeType': 'application/vnd.google-apps.folder'
-                        };
-                        const createResponse = await gapi.client.drive.files.create({
-                            resource: fileMetadata,
-                            fields: 'id'
-                        });
-                        folderId = createResponse.result.id;
-                    }
-                    setDriveFolderId(folderId);
-                    localStorage.setItem('narrativeos-drive-folder', folderId);
-                    
-                    // Sync all projects from Drive and push local projects to Drive
-                    await syncFromDrive(folderId);
-                    await syncToDrive(folderId);
-                    
-                    alert('Connected to Google Drive! All projects synced and protected.');
-                } catch (err) {
-                    console.error('Error creating/finding folder', err);
-                    alert('Error connecting to Drive. Check console.');
-                }
-            };
+            const syncFromCloud = async (id, token) => {
+                const effectiveToken = token || gistToken;
+                const effectiveId = id || gistId;
+                if (!effectiveToken || !effectiveId) return;
 
-            const syncFromDrive = async (folderId) => {
                 setSyncStatus('syncing');
                 try {
-                    const token = gapi.client.getToken();
-                    if (!token || !token.access_token) {
-                        console.warn('No valid token for Drive sync - user needs to reconnect');
-                        setSyncStatus('unsaved');
-                        setIsConnectedToDrive(false);
-                        localStorage.removeItem('narrativeos-connected');
-                        return;
-                    }
-
-                    // List all JSON files in the folder
-                    const response = await gapi.client.drive.files.list({
-                        q: `'${folderId}' in parents and trashed=false and mimeType='application/json'`,
-                        fields: 'files(id, name, modifiedTime)'
+                    const res = await fetch(`https://api.github.com/gists/${effectiveId}`, {
+                        headers: { 'Authorization': `token ${effectiveToken}` },
+                         cache: "no-store"
                     });
-
-                    const driveFiles = response.result.files || [];
-                    if (driveFiles.length === 0) {
-                        setSyncStatus('saved');
-                        return;
-                    }
-
+                    const gist = await res.json();
+                    
                     const localProjects = ProjectStorage.getAllProjects();
                     const updatedProjects = [...localProjects];
                     let hasChanges = false;
 
-                    for (const file of driveFiles) {
-                        // Download file content
-                        const fileResponse = await gapi.client.drive.files.get({
-                            fileId: file.id,
-                            alt: 'media'
-                        });
-                        
-                        const projectData = fileResponse.result;
-                        
-                        // Ensure it has the driveFileId set
-                        projectData.driveFileId = file.id;
+                    if (gist.files) {
+                        for (const [filename, file] of Object.entries(gist.files)) {
+                            if (!filename.startsWith('project_')) continue;
 
-                        // Check if we have this project locally
-                        const localIndex = updatedProjects.findIndex(p => p.id === projectData.id);
-                        
-                        if (localIndex === -1) {
-                            // New project from Drive
-                            updatedProjects.push(projectData);
-                            hasChanges = true;
-                        } else {
-                            // Existing project - check timestamp
-                            if (projectData.lastModified > updatedProjects[localIndex].lastModified) {
-                                updatedProjects[localIndex] = projectData;
-                                hasChanges = true;
-                            } else if (updatedProjects[localIndex].driveFileId !== file.id) {
-                                // Link local project to Drive file if not already linked
-                                updatedProjects[localIndex].driveFileId = file.id;
-                                hasChanges = true;
+                            let content = file.content;
+                            if (file.truncated) {
+                                const rawRes = await fetch(file.raw_url);
+                                content = await rawRes.text();
+                            }
+                            
+                            try {
+                                const projectData = JSON.parse(content);
+                                const localIndex = updatedProjects.findIndex(p => p.id === projectData.id);
+                                if (localIndex === -1) {
+                                    updatedProjects.push(projectData);
+                                    hasChanges = true;
+                                } else {
+                                    if (projectData.lastModified > (updatedProjects[localIndex].lastModified || 0)) {
+                                        updatedProjects[localIndex] = projectData;
+                                        hasChanges = true;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error parsing project file", filename);
                             }
                         }
                     }
 
                     if (hasChanges) {
-                        ProjectStorage.saveAllProjects(updatedProjects);
-                        setProjects(updatedProjects);
-                        // If current project was updated, refresh it
-                        if (currentProject) {
-                            const updatedCurrent = updatedProjects.find(p => p.id === currentProject.id);
-                            if (updatedCurrent) setCurrentProject(updatedCurrent);
-                        }
+                         ProjectStorage.saveAllProjects(updatedProjects);
+                         setProjects(updatedProjects);
+                         if (currentProject) {
+                            const updated = updatedProjects.find(p => p.id === currentProject.id);
+                            if (updated) setCurrentProject(updated);
+                         }
                     }
                     setSyncStatus('saved');
-                } catch (err) {
-                    console.error('Error syncing from Drive:', err);
+                } catch (e) {
+                    console.error("Sync error", e);
                     setSyncStatus('error');
                 }
             };
 
-            const syncToDrive = async (folderId) => {
-                // Push all local projects to Drive (for protecting existing projects on first connection)
-                try {
-                    const token = gapi.client.getToken();
-                    if (!token || !token.access_token) {
-                        // Token missing - skip sync silently
-                        // User will need to re-authenticate manually
-                        setSyncStatus('unsaved');
-                        setIsConnectedToDrive(false);
-                        localStorage.removeItem('narrativeos-connected');
-                        return;
-                    }
-                    
-                    const localProjects = ProjectStorage.getAllProjects();
-                    let hasChanges = false;
-                    const updatedProjects = [...localProjects];
-                    
-                    for (let i = 0; i < updatedProjects.length; i++) {
-                        const project = updatedProjects[i];
-                        
-                        // Skip if already has a Drive ID (already synced)
-                        if (project.driveFileId) continue;
-                        
-                        const fileContent = new Blob([JSON.stringify(project, null, 2)], {type: 'application/json'});
-                        const metadata = {
-                            'name': `${project.name}_${project.id}.json`,
-                            'mimeType': 'application/json',
-                            'parents': [folderId],
-                            'description': 'NarrativeOS Project Data'
-                        };
-                        
-                        const form = new FormData();
-                        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-                        form.append('file', fileContent);
+            const saveToCloud = async (project) => {
+               if (!isConnectedToCloud || !gistId) return;
 
-                        const accessToken = token.access_token;
-                        
-                        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                            method: 'POST',
-                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
-                            body: form
-                        });
-                        const val = await res.json();
-                        
-                        if (!val.id) {
-                            console.error('Drive upload failed - no file ID returned:', val);
-                            continue;
-                        }
-                        
-                        console.log(`Project "${project.name}" uploaded to Drive with ID: ${val.id}`);
-                        
-                        // Update project with new Drive ID
-                        updatedProjects[i] = { ...project, driveFileId: val.id };
-                        hasChanges = true;
-                    }
-                    
-                    // Update state and local storage if any projects were synced
-                    if (hasChanges) {
-                        ProjectStorage.saveAllProjects(updatedProjects);
-                        setProjects(updatedProjects);
-                        // If current project was updated, refresh it
-                        if (currentProject) {
-                            const updatedCurrent = updatedProjects.find(p => p.id === currentProject.id);
-                            if (updatedCurrent) {
-                                console.log('Updating current project with Drive ID:', updatedCurrent.driveFileId);
-                                setCurrentProject(updatedCurrent);
-                            }
-                        }
-                    }
-                    setSyncStatus('saved');
-                } catch (err) {
-                    console.error('Error pushing projects to Drive:', err);
-                    setSyncStatus('error');
-                }
+               setSyncStatus('syncing');
+               const fileName = `project_${project.id}.json`;
+               
+               try {
+                   await fetch(`https://api.github.com/gists/${gistId}`, {
+                       method: 'PATCH',
+                       headers: { 
+                           'Authorization': `token ${gistToken}`,
+                           'Content-Type': 'application/json' 
+                       },
+                       body: JSON.stringify({
+                           files: {
+                               [fileName]: {
+                                   content: JSON.stringify(project, null, 2)
+                               }
+                           }
+                       })
+                   });
+                   setSyncStatus('saved');
+               } catch (e) {
+                   console.error("Save error", e);
+                   setSyncStatus('unsaved');
+               }
             };
 
-            const saveToDrive = async (project) => {
-                if (!driveFolderId) return;
-                if (!isConnectedToDrive) return; // Skip if not connected
-                
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
-                    // Token expired - silently disconnect, don't spam errors
-                    setSyncStatus('unsaved');
-                    setIsConnectedToDrive(false);
-                    localStorage.removeItem('narrativeos-connected');
-                    return;
-                }
-                
-                setSyncStatus('syncing');
-                
-                try {
-                    const fileContent = new Blob([JSON.stringify(project, null, 2)], {type: 'application/json'});
-                    
-                    // If we have a file ID, update it
-                    if (project.driveFileId) {
-                        const form = new FormData();
-                        const updateMetadata = { 
-                            name: `${project.name}_${project.id}.json`, // Ensure name is up to date
-                            mimeType: 'application/json'
-                        };
-                        form.append('metadata', new Blob([JSON.stringify(updateMetadata)], {type: 'application/json'}));
-                        form.append('file', fileContent);
+            // Aliases for compatibility
+            const handleConnectDrive = handleConnectCloud;
+            const saveToDrive = saveToCloud;
+            const isConnectedToDrive = isConnectedToCloud;
 
-                        const accessToken = token.access_token;
-
-                        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${project.driveFileId}?uploadType=multipart`, {
-                            method: 'PATCH',
-                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
-                            body: form
-                        });
-                    } else {
-                        // Create new file
-                        const metadata = {
-                            'name': `${project.name}_${project.id}.json`, // Unique name: Title_ID.json
-                            'mimeType': 'application/json',
-                            'parents': [driveFolderId],
-                            'description': 'NarrativeOS Project Data'
-                        };
-                        
-                        const form = new FormData();
-                        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-                        form.append('file', fileContent);
-
-                        const accessToken = token.access_token;
-                        
-                        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                            method: 'POST',
-                            headers: new Headers({'Authorization': 'Bearer ' + accessToken}),
-                            body: form
-                        });
-                        const val = await res.json();
-                        
-                        if (!val.id) {
-                            console.error('Drive upload failed - no file ID returned:', val);
-                            setSyncStatus('unsaved');
-                            return;
-                        }
-                        
-                        console.log(`New project uploaded to Drive with ID: ${val.id}`);
-                        
-                        // Update local project with new Drive ID
-                        const updatedProject = { ...project, driveFileId: val.id };
-                        setCurrentProject(updatedProject);
-                        ProjectStorage.saveProject(updatedProject);
-                        
-                        // Also update in projects array
-                        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-                    }
-                    setSyncStatus('saved');
-                } catch (err) {
-                    console.error('Error saving to drive', err);
-                    setSyncStatus('unsaved');
-                }
-            };
 
             // Hugging Face Models List
             const HF_MODELS = [
@@ -4800,7 +4546,7 @@
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100]">
                         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
                             <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                            <div className="text-white font-semibold">Connecting to Google Drive...</div>
+                            <div className="text-white font-semibold">Connecting to GitHub...</div>
                             <div className="text-xs text-slate-400">This may take a moment</div>
                         </div>
                     </div>
