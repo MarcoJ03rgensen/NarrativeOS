@@ -4622,16 +4622,30 @@
                                                         
                                                         let objectBody = clean.substring(start, end + 1);
                                                         
-                                                        // 2. Remove comments
-                                                        objectBody = objectBody.replace(/\/\/.*$/gm, ""); // Single line
-                                                        objectBody = objectBody.replace(/\/\*[\s\S]*?\*\//g, ""); // Block
-                                                        
-                                                        // 3. Try strict JSON parse first (in case it was already valid)
+                                                        // 2. Try strict JSON parse first
                                                         try { return JSON.parse(objectBody); } catch(e) {}
                                                         
-                                                        // 4. Relaxed Parsing (Fix keys and quotes)
-                                                        // Quote unquoted keys
-                                                        let fixedJson = objectBody.replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":');
+                                                        // 3. Try evaluating as a JavaScript object literal
+                                                        // This handles unquoted keys, comments, and trailing commas correctly
+                                                        try {
+                                                            return new Function("return " + objectBody)();
+                                                        } catch(e) {
+                                                            // If that fails, fall back to manual cleanup (less reliable)
+                                                            console.warn("Eval failed, attempting manual parse", e);
+                                                        }
+
+                                                        // 4. Manual Parsing (Backup for when CSP forbids eval)
+                                                        // Remove comments
+                                                        objectBody = objectBody.replace(/\/\/.*$/gm, ""); 
+                                                        objectBody = objectBody.replace(/\/\*[\s\S]*?\*\//g, "");
+                                                        
+                                                        // Quote unquoted keys - Use strict start-of-line anchor to avoid matching inside strings
+                                                        // This assumes pretty-printed input with keys at start of lines
+                                                        let fixedJson = objectBody.replace(/^\s*([a-zA-Z0-9_]+)\s*:/gm, '"$1":');
+                                                        
+                                                        // Also try to catch keys that are start of definition but maybe not start of line (e.g. minified)
+                                                        // This is risky as seen before, so we only applying the safer regex above first.
+                                                        
                                                         // Replace single quoted values with double quoted
                                                         fixedJson = fixedJson.replace(/:\s*'([^']+)'/g, ': "$1"');
                                                         // Remove trailing commas
