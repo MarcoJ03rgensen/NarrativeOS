@@ -2596,12 +2596,20 @@
 
             // Enhanced switch project to support Firestore
             const switchToProject = async (projectId) => {
-                if (!isConnectedToCloud || !db) {
+                const targetProject = projects.find(p => p.id === projectId);
+                
+                // If it's a cloud project, we MUST be connected and use the cloud path
+                // We cannot fall back to local switch for cloud projects because they have no local content
+                if (targetProject && targetProject.isCloud) {
+                    if (!isConnectedToCloud || !db) {
+                        alert("Cannot open cloud project: You are offline or not connected to Firebase.");
+                        return;
+                    }
+                } else if (!isConnectedToCloud || !db) {
                      // Local switch
-                     const target = projects.find(p => p.id === projectId);
-                     if (target) {
-                         setCurrentProject(target);
-                         localStorage.setItem('narrativeos-current-project-id', target.id);
+                     if (targetProject) {
+                         setCurrentProject(targetProject);
+                         localStorage.setItem('narrativeos-current-project-id', targetProject.id);
                      }
                      return;
                 }
@@ -2614,6 +2622,12 @@
                     const bookSnap = await getDoc(bookRef);
                     
                     if (!bookSnap.exists()) {
+                        // Is it a local project?
+                        if (targetProject && !targetProject.isCloud) {
+                            setCurrentProject(targetProject);
+                            localStorage.setItem('narrativeos-current-project-id', targetProject.id);
+                            return;
+                        }
                         throw new Error("Book not found in cloud");
                     }
                     
@@ -2659,6 +2673,11 @@
                         ];
                     }
                     
+                    // Handle empty projects gracefully
+                    if (rehydratedSections.length === 0) {
+                         rehydratedSections = [{ id: "main-section", name: "Manuscript", chapters: [] }];
+                    }
+                    
                     const reconstructedProject = {
                         id: bookSnap.id,
                         ...bookData,
@@ -2680,7 +2699,9 @@
                     }
                 } catch (e) {
                     console.error("Error switching book:", e);
-                    alert("Error opening book: " + e.message);
+                    // Fallback to local if fetch fails but it looks like a local project?
+                    // No, that's confusing.
+                    alert("Error opening book from cloud: " + e.message + "\nCheck your connection.");
                 } finally {
                     setIsCloudLoading(false);
                 }
