@@ -2429,6 +2429,19 @@
                                     console.error("Error fetching books:", e);
                                 }
 
+                                // Fetch User Stats
+                                try {
+                                    const userDocRef = doc(dbInstance, "users", user.uid);
+                                    const userDoc = await getDoc(userDocRef);
+                                    if (userDoc.exists() && userDoc.data().stats) {
+                                        const cloudStats = userDoc.data().stats;
+                                        setStats(cloudStats);
+                                        StatsStorage.saveHistory(cloudStats);
+                                    }
+                                } catch (e) {
+                                    console.error("Error fetching stats:", e);
+                                }
+
                             } else {
                                 setFirebaseUser(null);
                                 setIsConnectedToCloud(false);
@@ -2441,6 +2454,26 @@
                     }
                 }
             }, [firebaseConfig]);
+
+            // Auto-Sync Stats to Cloud
+            useEffect(() => {
+                if (!db || !firebaseUser || !Object.keys(stats).length) return;
+
+                const timer = setTimeout(async () => {
+                    try {
+                        const userDocRef = doc(db, "users", firebaseUser.uid);
+                        // Store stats in a 'stats' field inside the user document
+                        await setDoc(userDocRef, { 
+                            stats: stats,
+                            last_active: serverTimestamp() 
+                        }, { merge: true });
+                    } catch (e) {
+                        console.error("Failed to sync stats", e);
+                    }
+                }, 5000); // Debounce 5s
+
+                return () => clearTimeout(timer);
+            }, [stats, db, firebaseUser]);
 
             const handleGithubLogin = async () => {
                 if (!auth) {
@@ -2551,6 +2584,9 @@
             // Real-time Chapter Sync
             useEffect(() => {
                 if (!currentProject || !db || !isConnectedToCloud || !selectedChapterId) return;
+                
+                // Only listen for cloud projects
+                if (!currentProject.isCloud) return;
                 
                 // Find chapter in current structure
                 // We assume flat structure for now based on recent fetch, 
@@ -2687,7 +2723,7 @@
                 setCurrentProject(updatedProject);
                 
                 // Cloud Save
-                if (isConnectedToCloud && db) {
+                if (isConnectedToCloud && db && currentProject.isCloud) {
                      setSyncStatus('syncing');
                      // Debounce handled by UI usually, but we call direct here.
                      // In prod, use a dedicated debounced function.
