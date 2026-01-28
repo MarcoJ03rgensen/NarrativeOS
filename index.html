@@ -2600,6 +2600,68 @@
                 }
             };
             
+            const uploadProjectToCloud = async (project) => {
+                if (!db || !firebaseUser) return;
+                
+                // Confirm upload
+                if (!confirm(`Upload "${project.name}" to the cloud? This will make it available on all your devices.`)) return;
+
+                setIsCloudLoading(true);
+                try {
+                    // Fetch full project data locally to ensure we have chapters
+                    const fullProject = ProjectStorage.getProject(project.id);
+
+                    // 1. Create Book Document
+                    const bookRef = doc(db, "books", fullProject.id);
+                    
+                    // Metadata
+                    await setDoc(bookRef, {
+                        title: fullProject.name,
+                        author_id: firebaseUser.uid,
+                        created_at: serverTimestamp(),
+                        updated_at: serverTimestamp(),
+                        sections: fullProject.sections.map(s => ({ id: s.id, name: s.name }))
+                    });
+                    
+                    // 2. Upload Chapters
+                    const chaptersRef = collection(db, "books", fullProject.id, "chapters");
+                    
+                    let chapterCount = 0;
+                    for (const section of fullProject.sections) {
+                        for (const chapter of section.chapters) {
+                            const chapterDoc = doc(chaptersRef, chapter.id);
+                            await setDoc(chapterDoc, {
+                                ...chapter,
+                                sectionId: section.id,
+                                author_id: firebaseUser.uid,
+                                last_updated: serverTimestamp()
+                            });
+                            chapterCount++;
+                        }
+                    }
+                    
+                    // 3. Update Local State
+                    setProjects(prev => prev.map(p => {
+                        if (p.id === fullProject.id) {
+                            return { ...p, isCloud: true };
+                        }
+                        return p;
+                    }));
+
+                    if (currentProject && currentProject.id === fullProject.id) {
+                        setCurrentProject(prev => ({ ...prev, isCloud: true }));
+                    }
+                    
+                    alert(`Project uploaded successfully! (${chapterCount} chapters synced)`);
+                    
+                } catch (e) {
+                    console.error("Upload failed", e);
+                    alert("Upload failed: " + e.message);
+                } finally {
+                    setIsCloudLoading(false);
+                }
+            };
+
             // Override save function
             const saveChapterContent = (content, title, subtitle) => {
                 if (!currentProject || !selectedSectionId || !selectedChapterId) return;
@@ -4542,7 +4604,20 @@
                                         >
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="text-lg font-bold text-white max-w-[80%] truncate">{project.name}</h3>
-                                                {project.isCloud && <Cloud className="w-4 h-4 text-emerald-400" />}
+                                                {project.isCloud ? (
+                                                    <Cloud className="w-4 h-4 text-emerald-400" />
+                                                ) : isConnectedToCloud ? (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            uploadProjectToCloud(project);
+                                                        }}
+                                                        className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded flex items-center gap-1 z-10 relative"
+                                                        title="Upload to Cloud"
+                                                    >
+                                                        <CloudLightning className="w-3 h-3" /> Sync
+                                                    </button>
+                                                ) : null}
                                             </div>
                                             <div className="flex items-center gap-4 text-xs text-slate-400 mb-2">
                                                 <span>{project.sections.length} section(s)</span>
