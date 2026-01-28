@@ -2604,6 +2604,16 @@
                     
                     setCurrentProject(reconstructedProject);
                     localStorage.setItem('narrativeos-current-project-id', projectId);
+                    
+                    // Reset selection to first chapter
+                    if (reconstructedProject.sections.length > 0) {
+                        setSelectedSectionId(reconstructedProject.sections[0].id);
+                        if (reconstructedProject.sections[0].chapters.length > 0) {
+                            setSelectedChapterId(reconstructedProject.sections[0].chapters[0].id);
+                        } else {
+                            setSelectedChapterId(null);
+                        }
+                    }
                 } catch (e) {
                     console.error("Error switching book:", e);
                     alert("Error opening book: " + e.message);
