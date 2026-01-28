@@ -2433,6 +2433,70 @@
                                             const newProjs = cloudProjects.filter(p => !existingIds.has(p.id));
                                             return [...prev, ...newProjs];
                                         });
+
+                                        // Check if we should auto-load a cloud project based on last session
+                                        const lastProjectId = localStorage.getItem('narrativeos-current-project-id');
+                                        const targetCloudProject = cloudProjects.find(p => p.id === lastProjectId);
+                                        
+                                        if (targetCloudProject) {
+                                            // We found the last used project in the cloud list!
+                                            // Trigger the switch to load its full content
+                                            // We need to do this slightly delayed to ensure state updates or just call it directly
+                                             // Note: switchToProject relies on 'db' and 'isConnectedToCloud' which are set/setting now.
+                                             // We can't call switchToProject easily from inside this callback if it depends on state that might not be flushed.
+                                             // But we can verify 'dbInstance' is available here.
+                                            
+                                            setLoadingMessage("Restoring Session...");
+                                            setIsCloudLoading(true);
+                                            
+                                            // Direct fetch logic similar to switchToProject but using the instances we have
+                                            (async () => {
+                                                try {
+                                                     const bookRef = doc(dbInstance, "books", targetCloudProject.id);
+                                                     const bookSnap = await getDoc(bookRef);
+                                                     if(bookSnap.exists()) {
+                                                        const bookData = bookSnap.data();
+                                                        const chaptersRef = collection(dbInstance, "books", targetCloudProject.id, "chapters");
+                                                        const qChapters = query(chaptersRef, orderBy("order_index"));
+                                                        const querySnapshot = await getDocs(qChapters);
+                                                        const loadedChapters = [];
+                                                        querySnapshot.forEach((doc) => loadedChapters.push({ id: doc.id, ...doc.data() }));
+
+                                                        let rehydratedSections = [];
+                                                        
+                                                        if (bookData.sections && Array.isArray(bookData.sections)) {
+                                                            rehydratedSections = bookData.sections.map(secMeta => ({
+                                                                ...secMeta,
+                                                                chapters: loadedChapters.filter(c => c.sectionId === secMeta.id)
+                                                            }));
+                                                            const orphans = loadedChapters.filter(c => !c.sectionId || !bookData.sections.find(s => s.id === c.sectionId));
+                                                            if (orphans.length > 0) {
+                                                                if (rehydratedSections.length > 0) rehydratedSections[0].chapters.push(...orphans);
+                                                                else rehydratedSections.push({ id: "default", name: "Manuscript", chapters: orphans });
+                                                            }
+                                                        } else {
+                                                            rehydratedSections = [{ id: "main-section", name: "Manuscript", chapters: loadedChapters }];
+                                                        }
+
+                                                        const reconstructed = {
+                                                            id: bookSnap.id, ...bookData, sections: rehydratedSections, isCloud: true
+                                                        };
+                                                        
+                                                        setCurrentProject(reconstructed);
+                                                        if (reconstructed.sections.length > 0) {
+                                                            setSelectedSectionId(reconstructed.sections[0].id);
+                                                            if (reconstructed.sections[0].chapters.length > 0) {
+                                                                setSelectedChapterId(reconstructed.sections[0].chapters[0].id);
+                                                            }
+                                                        }
+                                                     }
+                                                } catch(e) {
+                                                    console.error("Auto-restore failed", e);
+                                                } finally {
+                                                    setIsCloudLoading(false);
+                                                }
+                                            })();
+                                        }
                                     }
                                 } catch (e) {
                                     console.error("Error fetching books:", e);
@@ -3315,13 +3379,27 @@
                 const allProjectsRaw = ProjectStorage.getAllProjects();
                 const allProjects = allProjectsRaw.map(normalizeProject);
                 setProjects(allProjects);
-                if (allProjects.length > 0) {
-                    const first = normalizeProject(allProjects[0]);
-                    setCurrentProject(first);
-                    if (first.sections.length > 0) {
-                        setSelectedSectionId(first.sections[0].id);
-                        if (first.sections[0].chapters.length > 0) {
-                            setSelectedChapterId(first.sections[0].chapters[0].id);
+                
+                // Try to load the last used project from Local Storage
+                const lastProjectId = localStorage.getItem('narrativeos-current-project-id');
+                let targetProject = null;
+
+                if (lastProjectId) {
+                     targetProject = allProjects.find(p => p.id === lastProjectId);
+                }
+                
+                // If not found (or no ID), default to first local project
+                if (!targetProject && allProjects.length > 0) {
+                    targetProject = allProjects[0];
+                }
+
+                if (targetProject) {
+                    const fresh = normalizeProject(targetProject);
+                    setCurrentProject(fresh);
+                    if (fresh.sections.length > 0) {
+                        setSelectedSectionId(fresh.sections[0].id);
+                        if (fresh.sections[0].chapters.length > 0) {
+                            setSelectedChapterId(fresh.sections[0].chapters[0].id);
                         }
                     }
                 }
